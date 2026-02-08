@@ -1,0 +1,1 @@
+// example: export * from 'env-config.ts'

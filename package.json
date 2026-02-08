@@ -12,6 +12,7 @@
     "check": "prettier --write . && eslint --fix"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
     "@tailwindcss/vite": "^4.0.6",
     "@tanstack/react-devtools": "^0.7.0",
     "@tanstack/react-query": "^5.66.5",
@@ -19,10 +20,15 @@
     "@tanstack/react-router": "^1.132.0",
     "@tanstack/react-router-devtools": "^1.132.0",
     "@tanstack/router-plugin": "^1.132.0",
+    "axios": "^1.13.4",
+    "dayjs": "^1.11.19",
     "lucide-react": "^0.545.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "tailwindcss": "^4.0.6"
+    "react-hook-form": "^7.71.1",
+    "tailwindcss": "^4.0.6",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@tanstack/devtools-vite": "^0.3.11",
@@ -37,6 +43,7 @@
     "prettier": "^3.5.3",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",
+    "vite-tsconfig-paths": "^6.1.0",
     "vitest": "^3.0.5",
     "web-vitals": "^5.1.0"
   }
