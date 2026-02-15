@@ -383,7 +383,7 @@ const allRoutes: RouteObject[] = [
     children: [
       {
         path: '/',
-        element: <Navigate to="/dashboard" replace />,
+        element: <Navigate to="/widgets" replace />,
       },
       ...dashboardRoutes,
       ...ecommerceRoutes,

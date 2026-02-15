@@ -3,7 +3,6 @@ import {
     TbCalendar,
     TbChartBar,
     TbHelp,
-    TbLayoutDashboard,
     TbLock,
     TbLogout,
     TbMail,
@@ -28,18 +27,6 @@ type PageItemType = {
 }
 
 export const dashboardSitemap: PageItemType[] = [
-  {
-    label: 'Dashboards',
-    url: '/dashboards',
-    icon: TbLayoutDashboard,
-    children: [
-      { label: 'Analytics', url: '/dashboards/analytics' },
-      { label: 'CRM', url: '/dashboards/crm' },
-      { label: 'Sales', url: '/dashboards/sales' },
-      { label: 'Minimal', url: '/dashboards/minimal' },
-      { label: 'eCommerce', url: '/dashboards/ecommerce' },
-    ],
-  },
   {
     label: 'Profile',
     url: '/profile',
