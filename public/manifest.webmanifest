@@ -1,6 +1,6 @@
 {
-  "name": "QA System Portal",
-  "short_name": "QA Portal",
+  "name": "EWSD GP4",
+  "short_name": "EWSD GP4",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f4c81",

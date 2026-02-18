@@ -216,7 +216,7 @@ export function LoginPage() {
               </div>
 
               <p className="text-center text-muted mt-auto mb-0">
-                © {currentYear} {appName} — by{' '}
+                © {currentYear} University QA System — by{' '}
                 <span className="fw-semibold">{author}</span>
               </p>
             </CardBody>

@@ -14,9 +14,13 @@ import {
   RoleListPage,
   UserListPage,
 } from '@/pages'
-import { type RouteObject } from 'react-router'
+import { Navigate, type RouteObject } from 'react-router'
 
 export const AppRootRoutes: RouteObject[] = [
+  {
+    path: '/',
+    element: <Navigate to={AppRoutes.LOGIN.path} replace />,
+  },
   {
     path: AppRoutes.LOGIN.path,
     element: <LoginPage />,

@@ -6,9 +6,9 @@ import { Link } from 'react-router'
 import { Container } from 'react-bootstrap'
 import { TbMenu4 } from 'react-icons/tb'
 
-import logoDark from '@/assets/images/logo-black.png'
-import logoSm from '@/assets/images/logo-sm.png'
-import logo from '@/assets/images/logo.png'
+import logoDark from '@/assets/images/ewsd-gp4-logo-dark.svg'
+import logoSm from '@/assets/images/ewsd-gp4-icon.svg'
+import logo from '@/assets/images/ewsd-gp4-logo-light.svg'
 
 const Topbar = () => {
   const { sidenav, changeSideNavSize, showBackdrop } = useLayoutContext()
@@ -36,20 +36,15 @@ const Topbar = () => {
         <div className="d-flex align-items-center gap-2">
           <div className="logo-topbar">
             <Link to="/" className="logo-light">
-              <span className="logo-lg">
-                <img src={logo} alt="logo" />
-              </span>
-              <span className="logo-sm">
-                <img src={logoSm} alt="small logo" />
-              </span>
+              <img src={logo} alt="EWSD GP4" />
             </Link>
 
             <Link to="/" className="logo-dark">
               <span className="logo-lg">
-                <img src={logoDark} alt="dark logo" />
+                <img src={logoDark} alt="EWSD GP4" />
               </span>
               <span className="logo-sm">
-                <img src={logoSm} alt="small logo" />
+                <img src={logoSm} alt="EWSD GP4" />
               </span>
             </Link>
           </div>

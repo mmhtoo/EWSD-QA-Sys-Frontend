@@ -90,10 +90,10 @@ const CommonDataTable = <TData,>({
   )
 
   return (
-    <ComponentCard title={title} bodyClassName="p-0">
+    <ComponentCard title={title} bodyClassName="p-0" headerClassName="d-none">
       {(renderHeader || renderHeaderRight) && (
         <CardHeader className="border-light justify-content-between">
-          <div className="d-flex flex-wrap gap-2">
+          <div className="d-flex flex-wrap gap-2 justify-content-start">
             {renderHeader ? renderHeader(context) : null}
           </div>
           <div className="d-flex align-items-center gap-2">

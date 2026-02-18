@@ -258,7 +258,15 @@ export const ContentReportListPage = () => {
             columnFilters,
             setColumnFilters,
           }) => (
-            <>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                gap: '0.5rem',
+                justifyContent: 'space-between',
+              }}
+            >
               <SearchFilter
                 value={globalFilter}
                 onChange={(value) => setGlobalFilter(value)}
@@ -278,7 +286,7 @@ export const ContentReportListPage = () => {
                 options={statusOptions}
                 placeholder="All statuses"
               />
-            </>
+            </div>
           )}
         />
       </DashboardPage>

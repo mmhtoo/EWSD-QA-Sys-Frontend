@@ -1,6 +1,6 @@
-import logoDark from '@/assets/images/logo-black.png'
-import logoSm from '@/assets/images/logo-sm.png'
-import logo from '@/assets/images/logo.png'
+import logoDark from '@/assets/images/ewsd-gp4-logo-dark.svg'
+import logoSm from '@/assets/images/ewsd-gp4-icon.svg'
+import logo from '@/assets/images/ewsd-gp4-logo-light.svg'
 import { AppRoutes } from '@/configs/routes'
 import { useIdeaModalContext } from '@/context/useIdeaModalContext'
 import { useLayoutContext } from '@/context/useLayoutContext'
@@ -33,19 +33,19 @@ const Sidenav = () => {
       <Link to="/" className="logo">
         <span className="logo logo-light">
           <span className="logo-lg">
-            <img src={logo} alt="logo" />
+            <img src={logo} alt="EWSD GP4" />
           </span>
           <span className="logo-sm">
-            <img src={logoSm} alt="small logo" />
+            <img src={logoSm} alt="EWSD GP4" />
           </span>
         </span>
 
         <span className="logo logo-dark">
           <span className="logo-lg">
-            <img src={logoDark} alt="dark logo" />
+            <img src={logoDark} alt="EWSD GP4" />
           </span>
           <span className="logo-sm">
-            <img src={logoSm} alt="small logo" />
+            <img src={logoSm} alt="EWSD GP4" />
           </span>
         </span>
       </Link>
@@ -63,13 +63,14 @@ const Sidenav = () => {
         <div className="px-3 pt-3">
           <button
             type="button"
-            className="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2"
+            className="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2 new-idea-button"
             onClick={() => {
               navigate(AppRoutes.IDEA_LIST.fullPath)
               openNewIdeaModal()
             }}
           >
-            <TbPlus className="fs-18" /> New Idea
+            <TbPlus className="fs-18" />
+            <span className="new-idea-label">New Idea</span>
           </button>
         </div>
         <AppMenu />

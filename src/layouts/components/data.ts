@@ -48,16 +48,16 @@ export const menuItems: MenuItemType[] = [
   },
   { key: 'ideas-section', label: 'Ideas', isTitle: true },
   {
+    key: 'idea-feeds',
+    label: 'Newsfeeds',
+    icon: LuSparkles,
+    url: AppRoutes.IDEA_FEEDS.fullPath,
+  },
+  {
     key: 'idea-list',
     label: 'Ideas',
     icon: LuSparkles,
     url: AppRoutes.IDEA_LIST.fullPath,
-  },
-  {
-    key: 'idea-feeds',
-    label: 'Feeds',
-    icon: LuSparkles,
-    url: AppRoutes.IDEA_FEEDS.fullPath,
   },
   { key: 'users-section', label: 'Users', isTitle: true },
   {
