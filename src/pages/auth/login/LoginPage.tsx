@@ -1,9 +1,18 @@
 import AppLogo from '@/components/AppLogo'
+import { AppRoutes } from '@/configs/routes'
 import { appName, author, currentYear } from '@/helpers'
 import { Card, CardBody, Col, FormControl, Row } from 'react-bootstrap'
 import { LuCircleUser, LuKeyRound } from 'react-icons/lu'
+import { useNavigate } from 'react-router'
 
 export function LoginPage() {
+  const navigate = useNavigate()
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    navigate(AppRoutes.DASHBOARD_HOME.fullPath)
+  }
+
   return (
     <div className="auth-box p-0 w-100">
       <Row className="w-100 g-0">
@@ -166,7 +175,7 @@ export function LoginPage() {
                   Let’s get you signed in. Enter your email and password to
                   continue.
                 </p>
-                <form className="mt-4">
+                <form className="mt-4" onSubmit={handleSubmit}>
                   <div className="mb-3">
                     <label htmlFor="userEmail" className="form-label">
                       Email address <span className="text-danger">*</span>

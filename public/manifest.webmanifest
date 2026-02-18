@@ -1,0 +1,15 @@
+{
+  "name": "QA System Portal",
+  "short_name": "QA Portal",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f4c81",
+  "theme_color": "#0f4c81",
+  "icons": [
+    {
+      "src": "/brand-icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "128x128"
+    }
+  ]
+}

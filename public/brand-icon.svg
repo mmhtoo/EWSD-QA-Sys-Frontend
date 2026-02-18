@@ -1,0 +1,25 @@
+;<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 128 128"
+  role="img"
+  aria-label="QA System"
+>
+  <defs>
+    <linearGradient id="qaGradient" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0f4c81" />
+      <stop offset="100%" stop-color="#19a79b" />
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#qaGradient)" />
+  <circle cx="64" cy="64" r="34" fill="#ffffff" opacity="0.12" />
+  <g
+    fill="#ffffff"
+    font-family="Arial, sans-serif"
+    font-weight="700"
+    text-anchor="middle"
+  >
+    <text x="64" y="70" font-size="40">
+      QA
+    </text>
+  </g>
+</svg>
