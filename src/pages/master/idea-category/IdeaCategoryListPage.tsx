@@ -1,6 +1,8 @@
+'use client'
+
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createColumnHelper } from '@tanstack/react-table'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import {
   Badge,
   Button,
@@ -22,6 +24,7 @@ import EntityFormModal from '@/components/common/EntityFormModal'
 import SearchFilter from '@/components/common/SearchFilter'
 import DeleteConfirmationModal from '@/components/table/DeleteConfirmationModal'
 import type { IdeaCategory } from '@/types/entity'
+import { useIdeaCategoryStore } from './store'
 
 const ideaCategoryFormSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -30,41 +33,25 @@ const ideaCategoryFormSchema = z.object({
 
 type IdeaCategoryFormValues = z.infer<typeof ideaCategoryFormSchema>
 
-const initialCategories: IdeaCategory[] = [
-  {
-    id: 1,
-    name: 'Teaching & Learning',
-    description: 'Classroom experience and learning outcomes',
-    created_at: new Date('2025-09-01'),
-  },
-  {
-    id: 2,
-    name: 'Campus Services',
-    description: 'Facilities, services, and operations',
-    created_at: new Date('2025-09-01'),
-  },
-  {
-    id: 3,
-    name: 'Student Experience',
-    description: 'Clubs, support, and wellbeing',
-    created_at: new Date('2025-09-01'),
-  },
-]
 
 const usedCategoryIds = new Set([1, 2])
 
 const columnHelper = createColumnHelper<IdeaCategory>()
 
 export const IdeaCategoryListPage = () => {
-  const [categories, setCategories] = useState<IdeaCategory[]>(() => [
-    ...initialCategories,
-  ])
+  const { items, fetchAll, create, update, remove, setPayload, isLoading } =
+    useIdeaCategoryStore()
+
   const [showFormModal, setShowFormModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [activeCategory, setActiveCategory] = useState<IdeaCategory | null>(
     null,
   )
+
+  useEffect(() => {
+    fetchAll()
+  }, [fetchAll])
 
   const {
     register,
@@ -85,12 +72,15 @@ export const IdeaCategoryListPage = () => {
       }),
       columnHelper.accessor('created_at', {
         header: 'Created',
-        cell: ({ row }) => row.original.created_at.toLocaleDateString(),
+        cell: ({ row }) => {
+          const date = row.original.created_at
+          return date ? new Date(date).toLocaleDateString() : '—'
+        },
       }),
       {
         id: 'actions',
         header: 'Actions',
-        cell: ({ row }) => {
+        cell: ({ row }: any) => {
           const isUsed = usedCategoryIds.has(Number(row.original.id))
           return (
             <div className="d-flex gap-1 align-items-center">
@@ -145,42 +135,23 @@ export const IdeaCategoryListPage = () => {
     [reset],
   )
 
-  const submitForm = handleSubmit((data) => {
-    if (activeCategory) {
-      setCategories((prev) =>
-        prev.map((item) =>
-          item.id === activeCategory.id
-            ? {
-                ...item,
-                name: data.name,
-                description: data.description,
-                updated_at: new Date(),
-              }
-            : item,
-        ),
-      )
+  const submitForm = handleSubmit(async (data) => {
+    setPayload(data)
+
+    if (activeCategory?.id) {
+      await update(activeCategory.id)
     } else {
-      setCategories((prev) => [
-        {
-          id: Date.now(),
-          name: data.name,
-          description: data.description,
-          created_at: new Date(),
-        },
-        ...prev,
-      ])
+      await create()
     }
 
-    reset({ name: '', description: '' })
     setShowFormModal(false)
     setActiveCategory(null)
+    reset({ name: '', description: '' })
   })
 
-  const handleDelete = () => {
-    if (!activeCategory) return
-    setCategories((prev) =>
-      prev.filter((item) => item.id !== activeCategory.id),
-    )
+  const handleDelete = async () => {
+    if (!activeCategory?.id) return
+    await remove(activeCategory.id)
     setShowDeleteModal(false)
     setActiveCategory(null)
   }
@@ -205,8 +176,9 @@ export const IdeaCategoryListPage = () => {
       >
         <CommonDataTable
           title="Idea Categories"
-          data={categories}
+          data={items}
           columns={columns}
+          // loading={isLoading}
           itemsName="categories"
           renderHeader={({ globalFilter, setGlobalFilter }) => (
             <SearchFilter
@@ -227,6 +199,7 @@ export const IdeaCategoryListPage = () => {
         }}
         onSubmit={submitForm}
         submitLabel={activeCategory ? 'Update' : 'Create'}
+        isSubmitting={isLoading}
       >
         <Form>
           <FormGroup className="mb-3">
@@ -263,7 +236,9 @@ export const IdeaCategoryListPage = () => {
               },
               {
                 label: 'Created',
-                value: activeCategory.created_at.toLocaleDateString(),
+                value: activeCategory.created_at
+                  ? new Date(activeCategory.created_at).toLocaleDateString()
+                  : '—',
               },
             ]}
           />

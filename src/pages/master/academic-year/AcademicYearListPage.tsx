@@ -1,6 +1,8 @@
+'use client'
+
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createColumnHelper } from '@tanstack/react-table'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import {
   Button,
   Col,
@@ -23,6 +25,7 @@ import EntityFormModal from '@/components/common/EntityFormModal'
 import SearchFilter from '@/components/common/SearchFilter'
 import DeleteConfirmationModal from '@/components/table/DeleteConfirmationModal'
 import type { AcademicYear } from '@/types/entity'
+import { useAcademicYearStore } from './store'
 
 const academicYearFormSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -37,30 +40,20 @@ const academicYearFormSchema = z.object({
 
 type AcademicYearFormValues = z.infer<typeof academicYearFormSchema>
 
-const initialAcademicYears: AcademicYear[] = [
-  {
-    id: 1,
-    name: '2025/2026',
-    code: 'AY2526',
-    description: 'Academic year 2025/2026',
-    from_date: new Date('2025-09-01'),
-    to_date: new Date('2026-08-31'),
-    submission_deadline: new Date('2026-04-15'),
-    feedback_cut_off_deadline: new Date('2026-05-30'),
-    created_at: new Date('2025-09-01'),
-  },
-]
-
 const columnHelper = createColumnHelper<AcademicYear>()
 
 export const AcademicYearListPage = () => {
-  const [academicYears, setAcademicYears] = useState<AcademicYear[]>(() => [
-    ...initialAcademicYears,
-  ])
+  const { items, fetchAll, create, update, remove, setPayload, isLoading } =
+    useAcademicYearStore()
+
   const [showFormModal, setShowFormModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [activeYear, setActiveYear] = useState<AcademicYear | null>(null)
+
+  useEffect(() => {
+    fetchAll()
+  }, [])
 
   const {
     register,
@@ -79,24 +72,36 @@ export const AcademicYearListPage = () => {
     },
   })
 
+  // Helper to safely format dates for display (handles ISO strings from API or Date objects)
+  const formatDate = (dateInput: any) => {
+    if (!dateInput) return '—'
+    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput
+    return date.toLocaleDateString()
+  }
+
+  // Helper to format date for HTML Input (YYYY-MM-DD)
+  const formatForInput = (dateInput: any) => {
+    if (!dateInput) return ''
+    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput
+    return date.toISOString().split('T')[0]
+  }
+
   const columns = useMemo(
     () => [
       columnHelper.accessor('name', { header: 'Academic Year' }),
       columnHelper.accessor('code', { header: 'Code' }),
       columnHelper.accessor('submission_deadline', {
         header: 'Submission Deadline',
-        cell: ({ row }) =>
-          row.original.submission_deadline.toLocaleDateString(),
+        cell: ({ row }) => formatDate(row.original.submission_deadline),
       }),
       columnHelper.accessor('feedback_cut_off_deadline', {
         header: 'Feedback Cut-Off',
-        cell: ({ row }) =>
-          row.original.feedback_cut_off_deadline.toLocaleDateString(),
+        cell: ({ row }) => formatDate(row.original.feedback_cut_off_deadline),
       }),
       {
         id: 'actions',
         header: 'Actions',
-        cell: ({ row }) => (
+        cell: ({ row }: any) => (
           <div className="d-flex gap-1">
             <Button
               variant="light"
@@ -118,14 +123,14 @@ export const AcademicYearListPage = () => {
                 reset({
                   name: row.original.name,
                   code: row.original.code,
-                  fromDate: row.original.from_date.toISOString().slice(0, 10),
-                  toDate: row.original.to_date.toISOString().slice(0, 10),
-                  submissionDeadline: row.original.submission_deadline
-                    .toISOString()
-                    .slice(0, 10),
-                  feedbackCutOffDeadline: row.original.feedback_cut_off_deadline
-                    .toISOString()
-                    .slice(0, 10),
+                  fromDate: formatForInput(row.original.from_date),
+                  toDate: formatForInput(row.original.to_date),
+                  submissionDeadline: formatForInput(
+                    row.original.submission_deadline,
+                  ),
+                  feedbackCutOffDeadline: formatForInput(
+                    row.original.feedback_cut_off_deadline,
+                  ),
                 })
                 setShowFormModal(true)
               }}
@@ -150,42 +155,32 @@ export const AcademicYearListPage = () => {
     [reset],
   )
 
-  const submitForm = handleSubmit((data) => {
-    const payload: AcademicYear = {
-      id: activeYear?.id ?? Date.now(),
+  const submitForm = handleSubmit(async (data) => {
+    const payload = {
       name: data.name,
       code: data.code,
-      description: activeYear?.description,
-      from_date: new Date(data.fromDate),
-      to_date: new Date(data.toDate),
-      submission_deadline: new Date(data.submissionDeadline),
-      feedback_cut_off_deadline: new Date(data.feedbackCutOffDeadline),
-      created_at: activeYear?.created_at ?? new Date(),
-      updated_at: activeYear ? new Date() : undefined,
+      from_date: data.fromDate,
+      to_date: data.toDate,
+      submission_deadline: data.submissionDeadline,
+      feedback_cut_off_deadline: data.feedbackCutOffDeadline,
     }
 
-    setAcademicYears((prev) => {
-      if (activeYear) {
-        return prev.map((item) => (item.id === activeYear.id ? payload : item))
-      }
-      return [payload, ...prev]
-    })
+    setPayload(payload)
 
-    reset({
-      name: '',
-      code: '',
-      fromDate: '',
-      toDate: '',
-      submissionDeadline: '',
-      feedbackCutOffDeadline: '',
-    })
+    if (activeYear?.id) {
+      await update(activeYear.id)
+    } else {
+      await create()
+    }
+
     setShowFormModal(false)
     setActiveYear(null)
+    fetchAll()
   })
 
-  const handleDelete = () => {
-    if (!activeYear) return
-    setAcademicYears((prev) => prev.filter((item) => item.id !== activeYear.id))
+  const handleDelete = async () => {
+    if (!activeYear?.id) return
+    await remove(activeYear.id)
     setShowDeleteModal(false)
     setActiveYear(null)
   }
@@ -217,8 +212,9 @@ export const AcademicYearListPage = () => {
       >
         <CommonDataTable
           title="Academic Years"
-          data={academicYears}
+          data={items}
           columns={columns}
+          // loading={isLoading}
           itemsName="academic years"
           renderHeader={({ globalFilter, setGlobalFilter }) => (
             <SearchFilter
@@ -331,19 +327,15 @@ export const AcademicYearListPage = () => {
             items={[
               { label: 'Name', value: activeYear.name },
               { label: 'Code', value: activeYear.code },
-              {
-                label: 'Start',
-                value: activeYear.from_date.toLocaleDateString(),
-              },
-              { label: 'End', value: activeYear.to_date.toLocaleDateString() },
+              { label: 'Start', value: formatDate(activeYear.from_date) },
+              { label: 'End', value: formatDate(activeYear.to_date) },
               {
                 label: 'Submission Deadline',
-                value: activeYear.submission_deadline.toLocaleDateString(),
+                value: formatDate(activeYear.submission_deadline),
               },
               {
                 label: 'Feedback Cut-Off',
-                value:
-                  activeYear.feedback_cut_off_deadline.toLocaleDateString(),
+                value: formatDate(activeYear.feedback_cut_off_deadline),
               },
             ]}
           />

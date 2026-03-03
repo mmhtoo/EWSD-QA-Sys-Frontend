@@ -1,6 +1,8 @@
+'use client'
+
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createColumnHelper } from '@tanstack/react-table'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import {
   Button,
   Container,
@@ -21,6 +23,7 @@ import EntityFormModal from '@/components/common/EntityFormModal'
 import SearchFilter from '@/components/common/SearchFilter'
 import DeleteConfirmationModal from '@/components/table/DeleteConfirmationModal'
 import type { Role } from '@/types/entity'
+import { useRoleStore } from './store'
 
 const roleFormSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -29,35 +32,20 @@ const roleFormSchema = z.object({
 
 type RoleFormValues = z.infer<typeof roleFormSchema>
 
-const initialRoles: Role[] = [
-  {
-    id: 1,
-    name: 'QA Manager',
-    description: 'Oversees QA workflow',
-    created_at: new Date('2025-09-01'),
-  },
-  {
-    id: 2,
-    name: 'QA Coordinator',
-    description: 'Department coordinator',
-    created_at: new Date('2025-09-01'),
-  },
-  {
-    id: 3,
-    name: 'Staff',
-    description: 'Academic and support staff',
-    created_at: new Date('2025-09-01'),
-  },
-]
-
 const columnHelper = createColumnHelper<Role>()
 
 export const RoleListPage = () => {
-  const [roles, setRoles] = useState<Role[]>(() => [...initialRoles])
+  const { items, fetchAll, create, update, remove, setPayload, isLoading } =
+    useRoleStore()
+
   const [showFormModal, setShowFormModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [activeRole, setActiveRole] = useState<Role | null>(null)
+
+  useEffect(() => {
+    fetchAll()
+  }, [fetchAll])
 
   const {
     register,
@@ -78,12 +66,15 @@ export const RoleListPage = () => {
       }),
       columnHelper.accessor('created_at', {
         header: 'Created',
-        cell: ({ row }) => row.original.created_at.toLocaleDateString(),
+        cell: ({ row }) => {
+          const date = row.original.created_at
+          return date ? new Date(date).toLocaleDateString() : '—'
+        },
       }),
       {
         id: 'actions',
         header: 'Actions',
-        cell: ({ row }) => (
+        cell: ({ row }: any) => (
           <div className="d-flex gap-1">
             <Button
               variant="light"
@@ -129,40 +120,23 @@ export const RoleListPage = () => {
     [reset],
   )
 
-  const submitForm = handleSubmit((data) => {
-    if (activeRole) {
-      setRoles((prev) =>
-        prev.map((item) =>
-          item.id === activeRole.id
-            ? {
-                ...item,
-                name: data.name,
-                description: data.description,
-                updated_at: new Date(),
-              }
-            : item,
-        ),
-      )
+  const submitForm = handleSubmit(async (data) => {
+    setPayload(data)
+
+    if (activeRole?.id) {
+      await update(activeRole.id)
     } else {
-      setRoles((prev) => [
-        {
-          id: Date.now(),
-          name: data.name,
-          description: data.description,
-          created_at: new Date(),
-        },
-        ...prev,
-      ])
+      await create()
     }
 
-    reset({ name: '', description: '' })
     setShowFormModal(false)
     setActiveRole(null)
+    reset({ name: '', description: '' })
   })
 
-  const handleDelete = () => {
-    if (!activeRole) return
-    setRoles((prev) => prev.filter((item) => item.id !== activeRole.id))
+  const handleDelete = async () => {
+    if (!activeRole?.id) return
+    await remove(activeRole.id)
     setShowDeleteModal(false)
     setActiveRole(null)
   }
@@ -187,8 +161,9 @@ export const RoleListPage = () => {
       >
         <CommonDataTable
           title="Roles"
-          data={roles}
+          data={items}
           columns={columns}
+          // loading={isLoading}
           itemsName="roles"
           renderHeader={({ globalFilter, setGlobalFilter }) => (
             <SearchFilter
@@ -209,6 +184,7 @@ export const RoleListPage = () => {
         }}
         onSubmit={submitForm}
         submitLabel={activeRole ? 'Update' : 'Create'}
+        isSubmitting={isLoading}
       >
         <Form>
           <FormGroup className="mb-3">
@@ -242,7 +218,9 @@ export const RoleListPage = () => {
               { label: 'Description', value: activeRole.description || '—' },
               {
                 label: 'Created',
-                value: activeRole.created_at.toLocaleDateString(),
+                value: activeRole.created_at
+                  ? new Date(activeRole.created_at).toLocaleDateString()
+                  : '—',
               },
             ]}
           />
