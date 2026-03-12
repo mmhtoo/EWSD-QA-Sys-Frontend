@@ -4,7 +4,7 @@ import toast from 'react-hot-toast'
 
 interface CrudState<T> {
   items: T[]
-  activeItem: T | null
+  activeItem: T | any | null
   formValues: Partial<T>
   payload: any
 
@@ -27,7 +27,9 @@ interface CrudState<T> {
   reset: () => void
 }
 
-export const createCrudStore = <T extends { id?: string | number }>(endpoint: string) =>
+export const createCrudStore = <T extends { id?: string | number }>(
+  endpoint: string,
+) =>
   create<CrudState<T>>((set, get) => ({
     items: [],
     activeItem: null,
@@ -43,9 +45,15 @@ export const createCrudStore = <T extends { id?: string | number }>(endpoint: st
       set({ isLoading: true, error: null })
       try {
         const { data } = await axios.get(endpoint)
-        set({ items: data?.data, isLoading: false })
+        set({
+          items: data?.data?.current_page === 1 ? data?.data?.data : data?.data,
+          isLoading: false,
+        })
       } catch (err: any) {
-        set({ error: err?.response?.data?.message || err.message, isLoading: false })
+        set({
+          error: err?.response?.data?.message || err.message,
+          isLoading: false,
+        })
       }
     },
 
@@ -53,9 +61,12 @@ export const createCrudStore = <T extends { id?: string | number }>(endpoint: st
       set({ isLoading: true, error: null })
       try {
         const { data } = await axios.get(`${endpoint}/${id}`)
-        set({ activeItem: data, formValues: data, isLoading: false })
+        set({ activeItem: data?.data, formValues: data, isLoading: false })
       } catch (err: any) {
-        set({ error: err?.response?.data?.message || err.message, isLoading: false })
+        set({
+          error: err?.response?.data?.message || err.message,
+          isLoading: false,
+        })
       }
     },
 
@@ -71,7 +82,10 @@ export const createCrudStore = <T extends { id?: string | number }>(endpoint: st
         toast.success('Success')
       } catch (err: any) {
         toast.error('Something went wrong')
-        set({ error: err?.response?.data?.message || err.message, isLoading: false })
+        set({
+          error: err?.response?.data?.message || err.message,
+          isLoading: false,
+        })
       }
     },
 
@@ -89,7 +103,10 @@ export const createCrudStore = <T extends { id?: string | number }>(endpoint: st
         toast.success('Success')
       } catch (err: any) {
         toast.error('Something went wrong')
-        set({ error: err?.response?.data?.message || err.message, isLoading: false })
+        set({
+          error: err?.response?.data?.message || err.message,
+          isLoading: false,
+        })
       }
     },
 
@@ -104,7 +121,10 @@ export const createCrudStore = <T extends { id?: string | number }>(endpoint: st
         toast.success('Success')
       } catch (err: any) {
         toast.error('Something went wrong')
-        set({ error: err?.response?.data?.message || err.message, isLoading: false })
+        set({
+          error: err?.response?.data?.message || err.message,
+          isLoading: false,
+        })
       }
     },
 

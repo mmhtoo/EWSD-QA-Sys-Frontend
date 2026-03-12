@@ -10,6 +10,8 @@ import {
   FormControl,
   FormGroup,
   FormLabel,
+  Row,
+  Col,
 } from 'react-bootstrap'
 import { useForm } from 'react-hook-form'
 import { TbEdit, TbEye, TbPlus, TbTrash } from 'react-icons/tb'
@@ -23,11 +25,15 @@ import EntityFormModal from '@/components/common/EntityFormModal'
 import SearchFilter from '@/components/common/SearchFilter'
 import DeleteConfirmationModal from '@/components/table/DeleteConfirmationModal'
 import type { Role } from '@/types/entity'
-import { useRoleStore } from './store'
+import { useRolePermissionAttachStore, useRoleStore } from './store'
+import { usePermissionStore } from '../permission/store'
+import ApiHandlingProvider from '@/utils/ApiHandleProvider'
+import TblSkeletonLoading from '@/components/TblSkeletonLoading'
 
 const roleFormSchema = z.object({
   name: z.string().min(2, 'Name is required'),
   description: z.string().optional(),
+  permissions: z.array(z.string()).default([]),
 })
 
 type RoleFormValues = z.infer<typeof roleFormSchema>
@@ -35,8 +41,29 @@ type RoleFormValues = z.infer<typeof roleFormSchema>
 const columnHelper = createColumnHelper<Role>()
 
 export const RoleListPage = () => {
-  const { items, fetchAll, create, update, remove, setPayload, isLoading } =
-    useRoleStore()
+  const {
+    items: permissionItem,
+    fetchAll: fetchAllPermission,
+    isLoading: isLoadingPermission,
+  } = usePermissionStore()
+
+  const {
+    items,
+    fetchAll,
+    create,
+    update,
+    remove,
+    setPayload,
+    fetchById,
+    isLoading: isLoadingRole,
+    activeItem,
+  } = useRoleStore()
+
+  const {
+    create: rolePermissionAttachStore,
+    setPayload: setPayloadForRolePermissionAttach,
+    isLoading: isLoadingRolePermissionAttach,
+  } = useRolePermissionAttachStore()
 
   const [showFormModal, setShowFormModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
@@ -45,7 +72,8 @@ export const RoleListPage = () => {
 
   useEffect(() => {
     fetchAll()
-  }, [fetchAll])
+    fetchAllPermission()
+  }, [fetchAll, fetchAllPermission])
 
   const {
     register,
@@ -53,9 +81,19 @@ export const RoleListPage = () => {
     reset,
     formState: { errors },
   } = useForm<RoleFormValues>({
-    resolver: zodResolver(roleFormSchema),
-    defaultValues: { name: '', description: '' },
+    resolver: zodResolver(roleFormSchema) as never,
+    defaultValues: { name: '', description: '', permissions: [] },
   })
+
+  useEffect(() => {
+    if (activeItem && showFormModal) {
+      reset({
+        name: activeItem.name,
+        description: activeItem.description ?? '',
+        permissions: activeItem.permissions?.map((p: any) => p.name) || [],
+      })
+    }
+  }, [activeItem, reset, showFormModal])
 
   const columns = useMemo(
     () => [
@@ -91,12 +129,9 @@ export const RoleListPage = () => {
               variant="light"
               size="sm"
               className="btn-icon rounded-circle"
-              onClick={() => {
+              onClick={async () => {
                 setActiveRole(row.original)
-                reset({
-                  name: row.original.name,
-                  description: row.original.description ?? '',
-                })
+                await fetchById(row.original.id)
                 setShowFormModal(true)
               }}
             >
@@ -117,21 +152,36 @@ export const RoleListPage = () => {
         ),
       },
     ],
-    [reset],
+    [fetchById],
   )
 
   const submitForm = handleSubmit(async (data) => {
-    setPayload(data)
+    setPayload({
+      name: data.name,
+      description: data.description,
+    })
 
-    if (activeRole?.id) {
-      await update(activeRole.id)
+    let roleId = activeRole?.id
+
+    if (roleId) {
+      await update(roleId)
     } else {
-      await create()
+      const res: any = await create()
+      roleId = res?.id
+    }
+
+    if (roleId) {
+      setPayloadForRolePermissionAttach({
+        role: roleId,
+        permissions: data.permissions,
+      })
+      await rolePermissionAttachStore()
     }
 
     setShowFormModal(false)
     setActiveRole(null)
-    reset({ name: '', description: '' })
+    reset({ name: '', description: '', permissions: [] })
+    fetchAll()
   })
 
   const handleDelete = async () => {
@@ -151,7 +201,7 @@ export const RoleListPage = () => {
             variant="primary"
             onClick={() => {
               setActiveRole(null)
-              reset({ name: '', description: '' })
+              reset({ name: '', description: '', permissions: [] })
               setShowFormModal(true)
             }}
           >
@@ -159,20 +209,28 @@ export const RoleListPage = () => {
           </Button>
         }
       >
-        <CommonDataTable
-          title="Roles"
-          data={items}
-          columns={columns}
-          // loading={isLoading}
-          itemsName="roles"
-          renderHeader={({ globalFilter, setGlobalFilter }) => (
-            <SearchFilter
-              value={globalFilter}
-              onChange={setGlobalFilter}
-              placeholder="Search roles..."
-            />
-          )}
-        />
+        <ApiHandlingProvider
+          apiCalls={[
+            isLoadingPermission,
+            isLoadingRole,
+            isLoadingRolePermissionAttach,
+          ]}
+          loadingComponent={<TblSkeletonLoading />}
+        >
+          <CommonDataTable
+            title="Roles"
+            data={items}
+            columns={columns}
+            itemsName="roles"
+            renderHeader={({ globalFilter, setGlobalFilter }) => (
+              <SearchFilter
+                value={globalFilter}
+                onChange={setGlobalFilter}
+                placeholder="Search roles..."
+              />
+            )}
+          />
+        </ApiHandlingProvider>
       </DashboardPage>
 
       <EntityFormModal
@@ -184,7 +242,7 @@ export const RoleListPage = () => {
         }}
         onSubmit={submitForm}
         submitLabel={activeRole ? 'Update' : 'Create'}
-        isSubmitting={isLoading}
+        isSubmitting={isLoadingRole}
       >
         <Form>
           <FormGroup className="mb-3">
@@ -196,13 +254,45 @@ export const RoleListPage = () => {
             />
             <div className="invalid-feedback">{errors.name?.message}</div>
           </FormGroup>
-          <FormGroup>
+
+          <FormGroup className="mb-3">
             <FormLabel>Description</FormLabel>
-            <FormControl as="textarea" rows={3} {...register('description')} />
+            <FormControl as="textarea" rows={2} {...register('description')} />
+          </FormGroup>
+
+          <FormGroup>
+            <FormLabel className="fw-bold text-primary">
+              Assign Permissions
+            </FormLabel>
+            <div
+              className="border rounded p-3 bg-light"
+              style={{ maxHeight: '200px', overflowY: 'auto' }}
+            >
+              {permissionItem && permissionItem.length > 0 ? (
+                <Row>
+                  {permissionItem.map((perm: any) => (
+                    <Col xs={12} key={perm.id} className="mb-2">
+                      <Form.Check
+                        type="checkbox"
+                        id={`perm-${perm.id}`}
+                        label={perm.name}
+                        value={perm.name}
+                        {...register('permissions')}
+                      />
+                    </Col>
+                  ))}
+                </Row>
+              ) : (
+                <div className="text-center text-muted py-2 small">
+                  No permissions available
+                </div>
+              )}
+            </div>
           </FormGroup>
         </Form>
       </EntityFormModal>
 
+      {/* Details and Delete Modals stay the same */}
       <EntityDetailModal
         show={showDetailModal}
         title="Role Details"

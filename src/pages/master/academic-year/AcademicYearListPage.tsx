@@ -26,6 +26,8 @@ import SearchFilter from '@/components/common/SearchFilter'
 import DeleteConfirmationModal from '@/components/table/DeleteConfirmationModal'
 import type { AcademicYear } from '@/types/entity'
 import { useAcademicYearStore } from './store'
+import ApiHandlingProvider from '@/utils/ApiHandleProvider'
+import TblSkeletonLoading from '@/components/TblSkeletonLoading'
 
 const academicYearFormSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -210,20 +212,25 @@ export const AcademicYearListPage = () => {
           </Button>
         }
       >
-        <CommonDataTable
-          title="Academic Years"
-          data={items}
-          columns={columns}
-          // loading={isLoading}
-          itemsName="academic years"
-          renderHeader={({ globalFilter, setGlobalFilter }) => (
-            <SearchFilter
-              value={globalFilter}
-              onChange={setGlobalFilter}
-              placeholder="Search academic years..."
-            />
-          )}
-        />
+        <ApiHandlingProvider
+          apiCalls={[isLoading]}
+          loadingComponent={<TblSkeletonLoading />}
+        >
+          <CommonDataTable
+            title="Academic Years"
+            data={items}
+            columns={columns}
+            // loading={isLoading}
+            itemsName="academic years"
+            renderHeader={({ globalFilter, setGlobalFilter }) => (
+              <SearchFilter
+                value={globalFilter}
+                onChange={setGlobalFilter}
+                placeholder="Search academic years..."
+              />
+            )}
+          />
+        </ApiHandlingProvider>
       </DashboardPage>
 
       <EntityFormModal

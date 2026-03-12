@@ -24,6 +24,8 @@ import SearchFilter from '@/components/common/SearchFilter'
 import DeleteConfirmationModal from '@/components/table/DeleteConfirmationModal'
 import type { Permission } from '@/types/entity'
 import { usePermissionStore } from './store'
+import ApiHandlingProvider from '@/utils/ApiHandleProvider'
+import TblSkeletonLoading from '@/components/TblSkeletonLoading'
 
 const permissionFormSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -161,20 +163,25 @@ export const PermissionListPage = () => {
           </Button>
         }
       >
-        <CommonDataTable
-          title="Permissions"
-          data={items}
-          columns={columns}
-          // loading={isLoading}
-          itemsName="permissions"
-          renderHeader={({ globalFilter, setGlobalFilter }) => (
-            <SearchFilter
-              value={globalFilter}
-              onChange={setGlobalFilter}
-              placeholder="Search permissions..."
-            />
-          )}
-        />
+        <ApiHandlingProvider
+          apiCalls={[isLoading]}
+          loadingComponent={<TblSkeletonLoading />}
+        >
+          <CommonDataTable
+            title="Permissions"
+            data={items}
+            columns={columns}
+            // loading={isLoading}
+            itemsName="permissions"
+            renderHeader={({ globalFilter, setGlobalFilter }) => (
+              <SearchFilter
+                value={globalFilter}
+                onChange={setGlobalFilter}
+                placeholder="Search permissions..."
+              />
+            )}
+          />
+        </ApiHandlingProvider>
       </DashboardPage>
 
       <EntityFormModal

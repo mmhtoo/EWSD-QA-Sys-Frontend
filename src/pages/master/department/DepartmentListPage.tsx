@@ -24,6 +24,8 @@ import SearchFilter from '@/components/common/SearchFilter'
 import DeleteConfirmationModal from '@/components/table/DeleteConfirmationModal'
 import type { Department } from '@/types/entity'
 import { useDepartmentStore } from './store'
+import ApiHandlingProvider from '@/utils/ApiHandleProvider'
+import TblSkeletonLoading from '@/components/TblSkeletonLoading'
 
 const departmentFormSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -165,20 +167,25 @@ export const DepartmentListPage = () => {
           </Button>
         }
       >
-        <CommonDataTable
-          title="Departments"
-          data={items}
-          columns={columns}
-          // loading={isLoading}
-          itemsName="departments"
-          renderHeader={({ globalFilter, setGlobalFilter }) => (
-            <SearchFilter
-              value={globalFilter}
-              onChange={setGlobalFilter}
-              placeholder="Search departments..."
-            />
-          )}
-        />
+        <ApiHandlingProvider
+          apiCalls={[isLoading]}
+          loadingComponent={<TblSkeletonLoading />}
+        >
+          <CommonDataTable
+            title="Departments"
+            data={items}
+            columns={columns}
+            // loading={isLoading}
+            itemsName="departments"
+            renderHeader={({ globalFilter, setGlobalFilter }) => (
+              <SearchFilter
+                value={globalFilter}
+                onChange={setGlobalFilter}
+                placeholder="Search departments..."
+              />
+            )}
+          />
+        </ApiHandlingProvider>
       </DashboardPage>
 
       <EntityFormModal

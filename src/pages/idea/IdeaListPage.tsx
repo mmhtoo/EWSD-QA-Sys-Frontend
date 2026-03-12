@@ -1,3 +1,5 @@
+'use client'
+
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createColumnHelper } from '@tanstack/react-table'
 import { useEffect, useMemo, useState } from 'react'
@@ -14,132 +16,31 @@ import {
   Row,
 } from 'react-bootstrap'
 import { useForm } from 'react-hook-form'
-import { LuTag } from 'react-icons/lu'
-import {
-  TbEdit,
-  TbEye,
-  TbPlus,
-  TbThumbDown,
-  TbThumbUp,
-  TbTrash,
-  TbDownload,
-} from 'react-icons/tb'
+import { LuTag, LuCalendar } from 'react-icons/lu'
+import { TbEdit, TbEye, TbPlus, TbTrash } from 'react-icons/tb'
 import { z } from 'zod'
 
 import FileUploader from '@/components/FileUploader'
 import CommonDataTable from '@/components/common/CommonDataTable'
 import DashboardPage from '@/components/common/DashboardPage'
-import { useIdeaModalContext } from '@/context/useIdeaModalContext'
 import DeleteConfirmationModal from '@/components/table/DeleteConfirmationModal'
 import DetailFieldList from '@/components/common/DetailFieldList'
 import EntityDetailModal from '@/components/common/EntityDetailModal'
 import EntityFormModal from '@/components/common/EntityFormModal'
 import SearchFilter from '@/components/common/SearchFilter'
-import SelectFilter from '@/components/common/SelectFilter'
-import type { AcademicYear, Idea, IdeaCategory } from '@/types/entity'
 
-type IdeaRow = {
-  idea: Idea
-  category: IdeaCategory
-  thumbsUp: number
-  thumbsDown: number
-  comments: number
-  views: number
-}
+import { useIdeaStore } from './store'
+import { useIdeaCategoryStore } from '../master/idea-category/store'
+import { useAcademicYearStore } from '../master/academic-year/store'
+import ApiHandlingProvider from '@/utils/ApiHandleProvider'
+import TblSkeletonLoading from '@/components/TblSkeletonLoading'
 
-const ideaCategories: IdeaCategory[] = [
-  {
-    id: 1,
-    name: 'Teaching & Learning',
-    description: 'Classroom experience and learning outcomes',
-    created_at: new Date('2025-09-01'),
-  },
-  {
-    id: 2,
-    name: 'Campus Services',
-    description: 'Facilities, services, and operations',
-    created_at: new Date('2025-09-01'),
-  },
-  {
-    id: 3,
-    name: 'Student Experience',
-    description: 'Clubs, support, and wellbeing',
-    created_at: new Date('2025-09-01'),
-  },
-]
-
-const academicYears: AcademicYear[] = [
-  {
-    id: 1,
-    name: '2025/2026',
-    code: 'AY2526',
-    description: 'Academic year 2025/2026',
-    from_date: new Date('2025-09-01'),
-    to_date: new Date('2026-08-31'),
-    submission_deadline: new Date('2026-04-15'),
-    feedback_cut_off_deadline: new Date('2026-05-30'),
-    created_at: new Date('2025-09-01'),
-  },
-]
-
-const initialIdeas: IdeaRow[] = [
-  {
-    idea: {
-      id: 101,
-      user_id: 12,
-      academic_year_id: 1,
-      title: 'Introduce peer-led lab sessions',
-      content:
-        'Create peer-led lab sessions to improve engagement in first-year modules.',
-      is_anonymous: false,
-      created_at: new Date('2026-01-10'),
-    },
-    category: ideaCategories[0],
-    thumbsUp: 24,
-    thumbsDown: 3,
-    comments: 7,
-    views: 156,
-  },
-  {
-    idea: {
-      id: 102,
-      user_id: 18,
-      academic_year_id: 1,
-      title: 'Improve shuttle bus scheduling',
-      content:
-        'Extend shuttle bus service during evening hours and publish real-time updates.',
-      is_anonymous: true,
-      created_at: new Date('2026-01-22'),
-    },
-    category: ideaCategories[1],
-    thumbsUp: 15,
-    thumbsDown: 1,
-    comments: 4,
-    views: 98,
-  },
-  {
-    idea: {
-      id: 103,
-      user_id: 7,
-      academic_year_id: 1,
-      title: 'Monthly wellbeing check-ins',
-      content:
-        'Run monthly wellbeing check-ins with counselors and peer mentors.',
-      is_anonymous: false,
-      created_at: new Date('2026-02-03'),
-    },
-    category: ideaCategories[2],
-    thumbsUp: 31,
-    thumbsDown: 2,
-    comments: 11,
-    views: 210,
-  },
-]
-
+// Schema matches your Form requirements
 const ideaFormSchema = z.object({
   title: z.string().min(5, 'Title is required'),
   content: z.string().min(10, 'Content is required'),
   categoryId: z.string().min(1, 'Category is required'),
+  academicYearId: z.string().min(1, 'Academic Year is required'),
   isAnonymous: z.boolean().optional(),
   terms: z.literal(true, {
     errorMap: () => ({ message: 'You must accept the terms.' }),
@@ -148,20 +49,42 @@ const ideaFormSchema = z.object({
 
 type IdeaFormValues = z.infer<typeof ideaFormSchema>
 
-const columnHelper = createColumnHelper<IdeaRow>()
+// The column helper now uses the flat Idea type
+const columnHelper = createColumnHelper<any>()
 
 export const IdeaListPage = () => {
-  const { isNewIdeaModalOpen, closeNewIdeaModal } = useIdeaModalContext()
-  const [ideas, setIdeas] = useState<IdeaRow[]>(() => [...initialIdeas])
+  const {
+    items,
+    fetchAll,
+    create,
+    update,
+    remove,
+    setPayload,
+    fetchById,
+    isLoading: isLoadingIdea,
+  } = useIdeaStore()
+  const {
+    items: categories,
+    fetchAll: fetchCategories,
+    isLoading: isLoadingCategories,
+  } = useIdeaCategoryStore()
+  const {
+    items: academicYears,
+    fetchAll: fetchAcademicYears,
+    isLoading: isLoadingAcademicYear,
+  } = useAcademicYearStore()
+
   const [showFormModal, setShowFormModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [activeIdea, setActiveIdea] = useState<IdeaRow | null>(null)
+  const [activeIdea, setActiveIdea] = useState<any | null>(null)
   const [uploadFiles, setUploadFiles] = useState<File[] | undefined>([])
 
-  const activeYear = academicYears[0]
-  const isSubmissionClosed = new Date() > activeYear.submission_deadline
-  const isFeedbackClosed = new Date() > activeYear.feedback_cut_off_deadline
+  useEffect(() => {
+    fetchAll()
+    fetchCategories()
+    fetchAcademicYears()
+  }, [fetchAll, fetchCategories, fetchAcademicYears])
 
   const {
     register,
@@ -174,148 +97,55 @@ export const IdeaListPage = () => {
       title: '',
       content: '',
       categoryId: '',
+      academicYearId: '',
       isAnonymous: false,
-      terms: false,
+      terms: true,
     },
   })
 
-  const categoryOptions = useMemo(
-    () =>
-      ideaCategories.map((category) => ({
-        value: String(category.id),
-        label: category.name,
-      })),
-    [],
-  )
-
-  const openNewIdeaForm = () => {
-    setActiveIdea(null)
-    setUploadFiles([])
-    reset({
-      title: '',
-      content: '',
-      categoryId: '',
-      isAnonymous: false,
-      terms: false,
-    })
-    setShowFormModal(true)
-  }
-
-  useEffect(() => {
-    if (isNewIdeaModalOpen) {
-      openNewIdeaForm()
-      closeNewIdeaModal()
-    }
-  }, [isNewIdeaModalOpen, closeNewIdeaModal])
-
-  const handleExportCsv = () => {
-    const headers = [
-      'ID',
-      'Title',
-      'Category',
-      'Author',
-      'Thumbs Up',
-      'Thumbs Down',
-      'Comments',
-      'Views',
-      'Submitted',
-    ]
-
-    const escapeValue = (value: string) => {
-      if (value.includes('"') || value.includes(',') || value.includes('\n')) {
-        return `"${value.replace(/"/g, '""')}"`
-      }
-      return value
-    }
-
-    const rows = ideas.map((row) => [
-      String(row.idea.id),
-      row.idea.title,
-      row.category.name,
-      row.idea.is_anonymous ? 'Anonymous' : `User #${row.idea.user_id}`,
-      String(row.thumbsUp),
-      String(row.thumbsDown),
-      String(row.comments),
-      String(row.views),
-      row.idea.created_at.toLocaleDateString(),
-    ])
-
-    const csv = [headers, ...rows]
-      .map((row) => row.map((value) => escapeValue(value)).join(','))
-      .join('\n')
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `ideas-report-${new Date().toISOString().slice(0, 10)}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
-  }
-
   const columns = useMemo(
     () => [
-      columnHelper.accessor((row) => row.idea.title, {
-        id: 'title',
+      columnHelper.accessor('title', {
         header: 'Idea',
         cell: ({ row }) => (
           <div>
-            <div className="fw-semibold">{row.original.idea.title}</div>
-            <div className="text-muted fs-xxs">{row.original.idea.content}</div>
+            <div className="fw-semibold">{row.original.title}</div>
+            <div
+              className="text-muted fs-xxs text-truncate"
+              style={{ maxWidth: '250px' }}
+            >
+              {row.original.content}
+            </div>
           </div>
         ),
       }),
-      columnHelper.accessor((row) => row.category.name, {
-        id: 'category',
+      columnHelper.accessor('idea_category_id', {
         header: 'Category',
-        filterFn: 'equalsString',
-        cell: ({ row }) => (
-          <Badge bg="info-subtle" className="text-info">
-            {row.original.category.name}
-          </Badge>
-        ),
+        cell: ({ row }) => {
+          const cat = categories?.find(
+            (c) => c.id === row.original.idea_category_id,
+          )
+          return (
+            <Badge bg="info-subtle" className="text-info">
+              {cat?.name || 'Loading...'}
+            </Badge>
+          )
+        },
       }),
-      columnHelper.accessor((row) => row.idea.is_anonymous, {
-        id: 'author',
+      columnHelper.accessor('user_info', {
         header: 'Author',
-        cell: ({ row }) =>
-          row.original.idea.is_anonymous ? (
-            <Badge bg="secondary">Anonymous</Badge>
-          ) : (
-            `User #${row.original.idea.user_id}`
-          ),
-      }),
-      columnHelper.accessor((row) => row.thumbsUp, {
-        id: 'reactions',
-        header: 'Reactions',
         cell: ({ row }) => (
-          <div className="d-flex align-items-center gap-2">
-            <span className="text-success d-inline-flex align-items-center gap-1">
-              <TbThumbUp /> {row.original.thumbsUp}
-            </span>
-            <span className="text-danger d-inline-flex align-items-center gap-1">
-              <TbThumbDown /> {row.original.thumbsDown}
-            </span>
-          </div>
+          <span className="small text-muted">
+            {row.original.is_annonymous
+              ? 'Anonymous'
+              : row.original.user_info?.name}
+          </span>
         ),
-      }),
-      columnHelper.accessor((row) => row.comments, {
-        id: 'comments',
-        header: 'Comments',
-      }),
-      columnHelper.accessor((row) => row.views, {
-        id: 'views',
-        header: 'Views',
-      }),
-      columnHelper.accessor((row) => row.idea.created_at, {
-        id: 'submitted',
-        header: 'Submitted',
-        cell: ({ row }) => row.original.idea.created_at.toLocaleDateString(),
       }),
       {
         id: 'actions',
         header: 'Actions',
-        cell: ({ row }) => (
+        cell: ({ row }: any) => (
           <div className="d-flex gap-1">
             <Button
               variant="light"
@@ -326,25 +156,27 @@ export const IdeaListPage = () => {
                 setShowDetailModal(true)
               }}
             >
-              <TbEye className="fs-lg" />
+              <TbEye />
             </Button>
             <Button
               variant="light"
               size="sm"
               className="btn-icon rounded-circle"
               onClick={() => {
+                fetchById(row.original.id)
                 setActiveIdea(row.original)
                 reset({
-                  title: row.original.idea.title,
-                  content: row.original.idea.content,
-                  categoryId: String(row.original.category.id),
-                  isAnonymous: row.original.idea.is_anonymous,
+                  title: row.original.title,
+                  content: row.original.content,
+                  categoryId: String(row.original.idea_category_id),
+                  academicYearId: String(row.original.academic_year_id),
+                  isAnonymous: !!row.original.is_annonymous,
                   terms: true,
                 })
                 setShowFormModal(true)
               }}
             >
-              <TbEdit className="fs-lg" />
+              <TbEdit />
             </Button>
             <Button
               variant="danger"
@@ -355,262 +187,213 @@ export const IdeaListPage = () => {
                 setShowDeleteModal(true)
               }}
             >
-              <TbTrash className="fs-lg" />
+              <TbTrash />
             </Button>
           </div>
         ),
       },
     ],
-    [reset],
+    [categories, reset],
   )
 
-  const submitForm = handleSubmit((data) => {
-    const selectedCategory =
-      ideaCategories.find(
-        (category) => String(category.id) === data.categoryId,
-      ) ?? ideaCategories[0]
-    if (activeIdea) {
-      setIdeas((prev) =>
-        prev.map((row) =>
-          row.idea.id === activeIdea.idea.id
-            ? {
-                ...row,
-                idea: {
-                  ...row.idea,
-                  title: data.title,
-                  content: data.content,
-                  is_anonymous: !!data.isAnonymous,
-                  updated_at: new Date(),
-                },
-                category: selectedCategory,
-              }
-            : row,
-        ),
-      )
-    } else {
-      const newIdea: Idea = {
-        id: Date.now(),
-        user_id: 99,
-        academic_year_id: activeYear.id as number,
-        title: data.title,
-        content: data.content,
-        is_anonymous: !!data.isAnonymous,
-        created_at: new Date(),
-      }
-      setIdeas((prev) => [
-        {
-          idea: newIdea,
-          category: selectedCategory,
-          thumbsUp: 0,
-          thumbsDown: 0,
-          comments: 0,
-          views: 0,
-        },
-        ...prev,
-      ])
+  const submitForm = handleSubmit(async (data) => {
+    const formData = new FormData()
+    formData.append('title', data.title)
+    formData.append('content', data.content)
+    formData.append('idea_category_id', String(data.categoryId))
+    formData.append('academic_year_id', String(data.academicYearId))
+    formData.append('is_annonymous', data.isAnonymous ? '1' : '0')
+
+    if (uploadFiles && uploadFiles.length > 0) {
+      uploadFiles.forEach((file) => {
+        formData.append('file_url', file)
+      })
     }
 
-    setUploadFiles([])
+    setPayload(formData)
+
+    if (activeIdea?.id) {
+      await update(activeIdea.id)
+    } else {
+      await create()
+    }
+
     setShowFormModal(false)
     setActiveIdea(null)
-    reset({
-      title: '',
-      content: '',
-      categoryId: '',
-      isAnonymous: false,
-      terms: false,
-    })
+    setUploadFiles([])
+    fetchAll()
   })
-
-  const handleDelete = () => {
-    if (!activeIdea) return
-    setIdeas((prev) => prev.filter((row) => row.idea.id !== activeIdea.idea.id))
-    setShowDeleteModal(false)
-    setActiveIdea(null)
-  }
 
   return (
     <Container fluid>
       <DashboardPage
         title="Ideas"
-        subtitle="QA"
+        subtitle="Portal"
         actions={
           <Button
             variant="primary"
-            onClick={openNewIdeaForm}
-            disabled={isSubmissionClosed}
+            onClick={() => {
+              setActiveIdea(null)
+              setUploadFiles([])
+              reset({
+                title: '',
+                content: '',
+                categoryId: '',
+                academicYearId: '',
+                isAnonymous: false,
+                terms: true,
+              })
+              setShowFormModal(true)
+            }}
           >
             <TbPlus className="me-1" /> New Idea
           </Button>
         }
       >
-        <CommonDataTable
-          title="Idea Submissions"
-          data={ideas}
-          columns={columns}
-          itemsName="ideas"
-          renderHeader={({
-            globalFilter,
-            setGlobalFilter,
-            columnFilters,
-            setColumnFilters,
-          }) => (
-            <>
+        <ApiHandlingProvider
+          apiCalls={[isLoadingIdea, isLoadingCategories, isLoadingAcademicYear]}
+          loadingComponent={<TblSkeletonLoading />}
+        >
+          <CommonDataTable
+            title="Submissions"
+            data={items || []}
+            columns={columns}
+            // isLoading={isLoading}
+            itemsName="ideas"
+            renderHeader={({ globalFilter, setGlobalFilter }) => (
               <SearchFilter
                 value={globalFilter}
-                onChange={(value) => setGlobalFilter(value)}
+                onChange={setGlobalFilter}
                 placeholder="Search ideas..."
-                className="app-search"
               />
-              <SelectFilter
-                value={
-                  (columnFilters.find((filter) => filter.id === 'category')
-                    ?.value as string) ?? ''
-                }
-                onChange={(value) =>
-                  setColumnFilters([
-                    ...columnFilters.filter(
-                      (filter) => filter.id !== 'category',
-                    ),
-                    { id: 'category', value },
-                  ])
-                }
-                options={categoryOptions}
-                placeholder="All categories"
-                icon={<LuTag />}
-              />
-            </>
-          )}
-          renderHeaderRight={() => (
-            <>
-              {isSubmissionClosed && (
-                <Badge bg="warning-subtle" className="text-warning">
-                  Submission closed
-                </Badge>
-              )}
-              {isFeedbackClosed && (
-                <Badge bg="secondary-subtle" className="text-secondary">
-                  Comments closed
-                </Badge>
-              )}
-              <Button
-                variant="outline-primary"
-                size="sm"
-                className="d-inline-flex align-items-center gap-1"
-                onClick={handleExportCsv}
-              >
-                <TbDownload /> Export CSV
-              </Button>
-            </>
-          )}
-        />
+            )}
+          />
+        </ApiHandlingProvider>
       </DashboardPage>
 
+      {/* Form Modal */}
       <EntityFormModal
         show={showFormModal}
         title={activeIdea ? 'Edit Idea' : 'New Idea'}
-        onHide={() => {
-          setShowFormModal(false)
-          setActiveIdea(null)
-          setUploadFiles([])
-        }}
+        onHide={() => setShowFormModal(false)}
         onSubmit={submitForm}
         submitLabel={activeIdea ? 'Update' : 'Create'}
       >
         <Form>
-          <FormGroup className="mb-3">
-            <FormLabel>Title</FormLabel>
-            <FormControl
-              type="text"
-              isInvalid={!!errors.title}
-              {...register('title')}
-            />
-            <div className="invalid-feedback">{errors.title?.message}</div>
-          </FormGroup>
-          <FormGroup className="mb-3">
-            <FormLabel>Category</FormLabel>
-            <FormControl
-              as="select"
-              isInvalid={!!errors.categoryId}
-              {...register('categoryId')}
-            >
-              <option value="">Select category</option>
-              {categoryOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </FormControl>
-            <div className="invalid-feedback">{errors.categoryId?.message}</div>
-          </FormGroup>
-          <FormGroup className="mb-3">
-            <FormLabel>Idea Details</FormLabel>
-            <FormControl
-              as="textarea"
-              rows={4}
-              isInvalid={!!errors.content}
-              {...register('content')}
-            />
-            <div className="invalid-feedback">{errors.content?.message}</div>
-          </FormGroup>
-          <FormGroup className="mb-3">
-            <FormLabel>Attachments (optional)</FormLabel>
-            <FileUploader
-              setFiles={setUploadFiles}
-              files={uploadFiles}
-              maxFileCount={2}
-            />
-          </FormGroup>
-          <FormGroup className="mb-2">
-            <FormCheck
-              type="checkbox"
-              label="Submit anonymously"
-              {...register('isAnonymous')}
-            />
-          </FormGroup>
-          <FormGroup className="mb-2">
-            <FormCheck
-              type="checkbox"
-              label="I agree to the Terms and Conditions"
-              isInvalid={!!errors.terms}
-              feedbackType="invalid"
-              feedback={errors.terms?.message}
-              {...register('terms')}
-            />
-          </FormGroup>
+          <Row>
+            <Col md={12}>
+              <FormGroup className="mb-3">
+                <FormLabel>Title</FormLabel>
+                <FormControl
+                  type="text"
+                  isInvalid={!!errors.title}
+                  {...register('title')}
+                />
+              </FormGroup>
+            </Col>
+            <Col md={6}>
+              <FormGroup className="mb-3">
+                <FormLabel>
+                  <LuTag /> Category
+                </FormLabel>
+                <Form.Select
+                  isInvalid={!!errors.categoryId}
+                  {...register('categoryId')}
+                >
+                  <option value="">Select Category</option>
+                  {categories?.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Form.Select>
+              </FormGroup>
+            </Col>
+            <Col md={6}>
+              <FormGroup className="mb-3">
+                <FormLabel>
+                  <LuCalendar /> Academic Year
+                </FormLabel>
+                <Form.Select
+                  isInvalid={!!errors.academicYearId}
+                  {...register('academicYearId')}
+                >
+                  <option value="">Select Year</option>
+                  {academicYears?.map((y) => (
+                    <option key={y.id} value={y.id}>
+                      {y.name}
+                    </option>
+                  ))}
+                </Form.Select>
+              </FormGroup>
+            </Col>
+            <Col md={12}>
+              <FormGroup className="mb-3">
+                <FormLabel>Content</FormLabel>
+                <FormControl
+                  as="textarea"
+                  rows={4}
+                  isInvalid={!!errors.content}
+                  {...register('content')}
+                />
+              </FormGroup>
+            </Col>
+            <Col md={12}>
+              <FormGroup className="mb-3">
+                <FormLabel>Attachments</FormLabel>
+                <FileUploader
+                  files={uploadFiles}
+                  setFiles={setUploadFiles}
+                  maxFileCount={2}
+                />
+              </FormGroup>
+            </Col>
+          </Row>
+          <FormCheck
+            type="checkbox"
+            label="Anonymous Submission"
+            {...register('isAnonymous')}
+            className="mb-2"
+          />
+          <FormCheck
+            type="checkbox"
+            label="I agree to Terms"
+            isInvalid={!!errors.terms}
+            {...register('terms')}
+          />
         </Form>
       </EntityFormModal>
 
+      {/* Detail Modal */}
       <EntityDetailModal
         show={showDetailModal}
         title="Idea Details"
-        onHide={() => {
-          setShowDetailModal(false)
-          setActiveIdea(null)
-        }}
+        onHide={() => setShowDetailModal(false)}
       >
         {activeIdea && (
           <DetailFieldList
             items={[
-              { label: 'Title', value: activeIdea.idea.title },
-              { label: 'Category', value: activeIdea.category.name },
-              { label: 'Content', value: activeIdea.idea.content },
+              { label: 'Title', value: activeIdea.title },
+              {
+                label: 'Category',
+                value:
+                  categories?.find((c) => c.id === activeIdea.idea_category_id)
+                    ?.name || 'N/A',
+              },
+              { label: 'Content', value: activeIdea.content },
               {
                 label: 'Author',
-                value: activeIdea.idea.is_anonymous
+                value: activeIdea.is_annonymous
                   ? 'Anonymous'
-                  : `User #${activeIdea.idea.user_id}`,
+                  : activeIdea.user_info?.name || 'Unknown',
               },
               {
                 label: 'Submitted',
-                value: activeIdea.idea.created_at.toLocaleDateString(),
+                value: activeIdea.created_at
+                  ? new Date(activeIdea.created_at).toLocaleDateString()
+                  : 'N/A',
               },
-              {
-                label: 'Reactions',
-                value: `+${activeIdea.thumbsUp} / -${activeIdea.thumbsDown}`,
-              },
-              { label: 'Comments', value: activeIdea.comments },
-              { label: 'Views', value: activeIdea.views },
+              { label: 'Status', value: activeIdea.status },
             ]}
           />
         )}
@@ -619,7 +402,11 @@ export const IdeaListPage = () => {
       <DeleteConfirmationModal
         show={showDeleteModal}
         onHide={() => setShowDeleteModal(false)}
-        onConfirm={handleDelete}
+        onConfirm={async () => {
+          if (activeIdea?.id) await remove(activeIdea.id)
+          setShowDeleteModal(false)
+          fetchAll()
+        }}
         selectedCount={1}
         itemName="idea"
       />

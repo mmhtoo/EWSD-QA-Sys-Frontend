@@ -1,6 +1,8 @@
+'use client'
+
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createColumnHelper } from '@tanstack/react-table'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import {
   Button,
   Container,
@@ -21,80 +23,60 @@ import EntityDetailModal from '@/components/common/EntityDetailModal'
 import EntityFormModal from '@/components/common/EntityFormModal'
 import SearchFilter from '@/components/common/SearchFilter'
 import DeleteConfirmationModal from '@/components/table/DeleteConfirmationModal'
-import type { Role, User } from '@/types/entity'
+import TblSkeletonLoading from '@/components/TblSkeletonLoading'
+import ApiHandlingProvider from '@/utils/ApiHandleProvider'
+import type { User } from '@/types/entity'
+import { useRegisterStore, useUserStore } from './store'
+import { useRoleStore } from '../role/store'
+import { useDepartmentStore } from '../department/store'
 
 const userFormSchema = z.object({
   name: z.string().min(2, 'Name is required'),
   email: z.string().email('Valid email is required'),
-  roleId: z.string().min(1, 'Role is required'),
-  departmentId: z.string().min(1, 'Department is required'),
+  role_id: z.coerce.number().min(1, 'Role is required'),
+  department_id: z.coerce.number().min(1, 'Department is required'),
   position: z.string().optional(),
 })
 
 type UserFormValues = z.infer<typeof userFormSchema>
 
-const roles: Role[] = [
-  {
-    id: 1,
-    name: 'QA Manager',
-    description: 'Oversees QA workflow',
-    created_at: new Date('2025-09-01'),
-  },
-  {
-    id: 2,
-    name: 'QA Coordinator',
-    description: 'Department coordinator',
-    created_at: new Date('2025-09-01'),
-  },
-  {
-    id: 3,
-    name: 'Staff',
-    description: 'Academic and support staff',
-    created_at: new Date('2025-09-01'),
-  },
-]
-
-const initialUsers: User[] = [
-  {
-    id: 1001,
-    role_id: 1,
-    department_id: 1,
-    name: 'Monica Fisher',
-    email: 'monica.fisher@university.edu',
-    password_hash: 'hash',
-    position: 'QA Manager',
-    created_at: new Date('2025-09-01'),
-  },
-  {
-    id: 1002,
-    role_id: 2,
-    department_id: 2,
-    name: 'Jordan Lee',
-    email: 'jordan.lee@university.edu',
-    password_hash: 'hash',
-    position: 'QA Coordinator',
-    created_at: new Date('2025-09-03'),
-  },
-  {
-    id: 1003,
-    role_id: 3,
-    department_id: 3,
-    name: 'Ella Patel',
-    email: 'ella.patel@university.edu',
-    password_hash: 'hash',
-    position: 'Lecturer',
-    created_at: new Date('2025-09-05'),
-  },
-]
-
 const columnHelper = createColumnHelper<User>()
 
 export const UserListPage = () => {
-  const [users, setUsers] = useState<User[]>(() => [...initialUsers])
+  const { create: createRegister, setPayload: setPayloadRegister } =
+    useRegisterStore()
+  const {
+    items,
+    fetchAll,
+    create,
+    update,
+    remove,
+    setPayload,
+    isLoading: isLoadingUser,
+  } = useUserStore()
+
+  const {
+    items: itemsRole,
+    fetchAll: fetchAllRole,
+    isLoading: isLoadingRole,
+  } = useRoleStore()
+
+  const {
+    items: itemsDepartment,
+    fetchAll: fetchAllDepartment,
+    isLoading: isLoadingDepartment,
+  } = useDepartmentStore()
+
   const [showFormModal, setShowFormModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [activeUser, setActiveUser] = useState<User | null>(null)
+
+  useEffect(() => {
+    fetchAll()
+    fetchAllRole()
+    fetchAllDepartment()
+  }, [])
 
   const {
     register,
@@ -106,8 +88,8 @@ export const UserListPage = () => {
     defaultValues: {
       name: '',
       email: '',
-      roleId: '',
-      departmentId: '',
+      role_id: 0,
+      department_id: 0,
       position: '',
     },
   })
@@ -116,24 +98,13 @@ export const UserListPage = () => {
     () => [
       columnHelper.accessor('name', { header: 'Name' }),
       columnHelper.accessor('email', { header: 'Email' }),
-      columnHelper.accessor('role_id', {
+      columnHelper.accessor('role', {
         header: 'Role',
-        cell: ({ row }) =>
-          roles.find((role) => Number(role.id) === row.original.role_id)
-            ?.name ?? '—',
-      }),
-      columnHelper.accessor('department_id', {
-        header: 'Department',
-        cell: ({ row }) => `Department #${row.original.department_id}`,
-      }),
-      columnHelper.accessor('created_at', {
-        header: 'Created',
-        cell: ({ row }) => row.original.created_at.toLocaleDateString(),
       }),
       {
         id: 'actions',
         header: 'Actions',
-        cell: ({ row }) => (
+        cell: ({ row }: any) => (
           <div className="d-flex gap-1">
             <Button
               variant="light"
@@ -146,7 +117,7 @@ export const UserListPage = () => {
             >
               <TbEye className="fs-lg" />
             </Button>
-            <Button
+            {/* <Button
               variant="light"
               size="sm"
               className="btn-icon rounded-circle"
@@ -155,16 +126,16 @@ export const UserListPage = () => {
                 reset({
                   name: row.original.name,
                   email: row.original.email,
-                  roleId: String(row.original.role_id),
-                  departmentId: String(row.original.department_id),
+                  role_id: row.original.role_id,
+                  department_id: row.original.department_id,
                   position: row.original.position ?? '',
                 })
                 setShowFormModal(true)
               }}
             >
               <TbEdit className="fs-lg" />
-            </Button>
-            <Button
+            </Button> */}
+            {/* <Button
               variant="danger"
               size="sm"
               className="btn-icon rounded-circle"
@@ -174,7 +145,7 @@ export const UserListPage = () => {
               }}
             >
               <TbTrash className="fs-lg" />
-            </Button>
+            </Button> */}
           </div>
         ),
       },
@@ -182,47 +153,22 @@ export const UserListPage = () => {
     [reset],
   )
 
-  const submitForm = handleSubmit((data) => {
-    if (activeUser) {
-      setUsers((prev) =>
-        prev.map((item) =>
-          item.id === activeUser.id
-            ? {
-                ...item,
-                name: data.name,
-                email: data.email,
-                role_id: Number(data.roleId),
-                department_id: Number(data.departmentId),
-                position: data.position,
-                updated_at: new Date(),
-              }
-            : item,
-        ),
-      )
+  const submitForm = handleSubmit(async (data) => {
+    setPayloadRegister({ ...data, password: 'password123' })
+    if (activeUser?.id) {
+      await update(activeUser.id)
     } else {
-      setUsers((prev) => [
-        {
-          id: Date.now(),
-          role_id: Number(data.roleId),
-          department_id: Number(data.departmentId),
-          name: data.name,
-          email: data.email,
-          password_hash: 'hash',
-          position: data.position,
-          created_at: new Date(),
-        },
-        ...prev,
-      ])
+      await createRegister()
     }
-
-    reset({ name: '', email: '', roleId: '', departmentId: '', position: '' })
     setShowFormModal(false)
     setActiveUser(null)
+    reset()
+    fetchAll()
   })
 
-  const handleDelete = () => {
-    if (!activeUser) return
-    setUsers((prev) => prev.filter((item) => item.id !== activeUser.id))
+  const handleDelete = async () => {
+    if (!activeUser?.id) return
+    await remove(activeUser.id)
     setShowDeleteModal(false)
     setActiveUser(null)
   }
@@ -240,8 +186,8 @@ export const UserListPage = () => {
               reset({
                 name: '',
                 email: '',
-                roleId: '',
-                departmentId: '',
+                role_id: 0,
+                department_id: 0,
                 position: '',
               })
               setShowFormModal(true)
@@ -251,39 +197,38 @@ export const UserListPage = () => {
           </Button>
         }
       >
-        <CommonDataTable
-          title="Users"
-          data={users}
-          columns={columns}
-          itemsName="users"
-          renderHeader={({ globalFilter, setGlobalFilter }) => (
-            <SearchFilter
-              value={globalFilter}
-              onChange={setGlobalFilter}
-              placeholder="Search users..."
-            />
-          )}
-        />
+        <ApiHandlingProvider
+          apiCalls={[isLoadingRole, isLoadingUser, isLoadingDepartment]}
+          loadingComponent={<TblSkeletonLoading />}
+        >
+          <CommonDataTable
+            title="Users List"
+            data={items}
+            columns={columns}
+            itemsName="users"
+            renderHeader={({ globalFilter, setGlobalFilter }) => (
+              <SearchFilter
+                value={globalFilter}
+                onChange={setGlobalFilter}
+                placeholder="Search users..."
+              />
+            )}
+          />
+        </ApiHandlingProvider>
       </DashboardPage>
 
       <EntityFormModal
         show={showFormModal}
         title={activeUser ? 'Edit User' : 'New User'}
-        onHide={() => {
-          setShowFormModal(false)
-          setActiveUser(null)
-        }}
+        onHide={() => setShowFormModal(false)}
         onSubmit={submitForm}
         submitLabel={activeUser ? 'Update' : 'Create'}
+        isSubmitting={isLoadingUser}
       >
         <Form>
           <FormGroup className="mb-3">
             <FormLabel>Name</FormLabel>
-            <FormControl
-              type="text"
-              isInvalid={!!errors.name}
-              {...register('name')}
-            />
+            <FormControl isInvalid={!!errors.name} {...register('name')} />
             <div className="invalid-feedback">{errors.name?.message}</div>
           </FormGroup>
           <FormGroup className="mb-3">
@@ -297,30 +242,37 @@ export const UserListPage = () => {
           </FormGroup>
           <FormGroup className="mb-3">
             <FormLabel>Role</FormLabel>
-            <FormSelect isInvalid={!!errors.roleId} {...register('roleId')}>
+            <FormSelect isInvalid={!!errors.role_id} {...register('role_id')}>
               <option value="">Select role</option>
-              {roles.map((role) => (
-                <option key={role.id} value={role.id}>
-                  {role.name}
+              {itemsRole.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
                 </option>
               ))}
             </FormSelect>
-            <div className="invalid-feedback">{errors.roleId?.message}</div>
+            <div className="invalid-feedback">{errors.role_id?.message}</div>
           </FormGroup>
           <FormGroup className="mb-3">
-            <FormLabel>Department</FormLabel>
-            <FormControl
-              type="text"
-              isInvalid={!!errors.departmentId}
-              {...register('departmentId')}
-            />
+            <FormLabel>Department ID</FormLabel>
+            <FormSelect
+              isInvalid={!!errors.department_id}
+              {...register('department_id')}
+            >
+              <option value="">Select role</option>
+              {itemsDepartment.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </FormSelect>
+
             <div className="invalid-feedback">
-              {errors.departmentId?.message}
+              {errors.department_id?.message}
             </div>
           </FormGroup>
           <FormGroup>
             <FormLabel>Position</FormLabel>
-            <FormControl type="text" {...register('position')} />
+            <FormControl {...register('position')} />
           </FormGroup>
         </Form>
       </EntityFormModal>
@@ -328,10 +280,7 @@ export const UserListPage = () => {
       <EntityDetailModal
         show={showDetailModal}
         title="User Details"
-        onHide={() => {
-          setShowDetailModal(false)
-          setActiveUser(null)
-        }}
+        onHide={() => setShowDetailModal(false)}
       >
         {activeUser && (
           <DetailFieldList
@@ -341,17 +290,15 @@ export const UserListPage = () => {
               {
                 label: 'Role',
                 value:
-                  roles.find((role) => Number(role.id) === activeUser.role_id)
-                    ?.name ?? '—',
-              },
-              {
-                label: 'Department',
-                value: `Department #${activeUser.department_id}`,
+                  itemsRole.find((r) => r.id === activeUser.role_id)?.name ??
+                  '—',
               },
               { label: 'Position', value: activeUser.position ?? '—' },
               {
                 label: 'Created',
-                value: activeUser.created_at.toLocaleDateString(),
+                value: activeUser.created_at
+                  ? new Date(activeUser.created_at).toLocaleDateString()
+                  : '—',
               },
             ]}
           />

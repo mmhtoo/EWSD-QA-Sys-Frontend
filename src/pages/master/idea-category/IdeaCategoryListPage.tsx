@@ -25,6 +25,8 @@ import SearchFilter from '@/components/common/SearchFilter'
 import DeleteConfirmationModal from '@/components/table/DeleteConfirmationModal'
 import type { IdeaCategory } from '@/types/entity'
 import { useIdeaCategoryStore } from './store'
+import ApiHandlingProvider from '@/utils/ApiHandleProvider'
+import TblSkeletonLoading from '@/components/TblSkeletonLoading'
 
 const ideaCategoryFormSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -32,7 +34,6 @@ const ideaCategoryFormSchema = z.object({
 })
 
 type IdeaCategoryFormValues = z.infer<typeof ideaCategoryFormSchema>
-
 
 const usedCategoryIds = new Set([1, 2])
 
@@ -147,6 +148,7 @@ export const IdeaCategoryListPage = () => {
     setShowFormModal(false)
     setActiveCategory(null)
     reset({ name: '', description: '' })
+    fetchAll()
   })
 
   const handleDelete = async () => {
@@ -174,20 +176,25 @@ export const IdeaCategoryListPage = () => {
           </Button>
         }
       >
-        <CommonDataTable
-          title="Idea Categories"
-          data={items}
-          columns={columns}
-          // loading={isLoading}
-          itemsName="categories"
-          renderHeader={({ globalFilter, setGlobalFilter }) => (
-            <SearchFilter
-              value={globalFilter}
-              onChange={setGlobalFilter}
-              placeholder="Search categories..."
-            />
-          )}
-        />
+        <ApiHandlingProvider
+          apiCalls={[isLoading]}
+          loadingComponent={<TblSkeletonLoading />}
+        >
+          <CommonDataTable
+            title="Idea Categories"
+            data={items}
+            columns={columns}
+            // loading={isLoading}
+            itemsName="categories"
+            renderHeader={({ globalFilter, setGlobalFilter }) => (
+              <SearchFilter
+                value={globalFilter}
+                onChange={setGlobalFilter}
+                placeholder="Search categories..."
+              />
+            )}
+          />
+        </ApiHandlingProvider>
       </DashboardPage>
 
       <EntityFormModal
