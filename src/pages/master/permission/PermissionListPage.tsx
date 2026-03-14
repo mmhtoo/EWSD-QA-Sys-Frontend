@@ -136,6 +136,8 @@ export const PermissionListPage = () => {
     setShowFormModal(false)
     setActivePermission(null)
     reset({ name: '', description: '' })
+
+    fetchAll()
   })
 
   const handleDelete = async () => {

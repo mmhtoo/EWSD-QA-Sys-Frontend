@@ -271,7 +271,7 @@ export const RoleListPage = () => {
               {permissionItem && permissionItem.length > 0 ? (
                 <Row>
                   {permissionItem.map((perm: any) => (
-                    <Col xs={12} key={perm.id} className="mb-2">
+                    <Col xs={6} key={perm.id} className="mb-2">
                       <Form.Check
                         type="checkbox"
                         id={`perm-${perm.id}`}
