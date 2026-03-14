@@ -2,7 +2,7 @@ import axios from 'axios'
 import { AppRoutes } from '@/configs/routes'
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: import.meta.env.VITE_BE_URL || 'http://localhost:8000/api',
 })
 
 api.interceptors.request.use(
