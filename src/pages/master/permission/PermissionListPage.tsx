@@ -1,6 +1,8 @@
+'use client'
+
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createColumnHelper } from '@tanstack/react-table'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import {
   Button,
   Container,
@@ -21,6 +23,9 @@ import EntityFormModal from '@/components/common/EntityFormModal'
 import SearchFilter from '@/components/common/SearchFilter'
 import DeleteConfirmationModal from '@/components/table/DeleteConfirmationModal'
 import type { Permission } from '@/types/entity'
+import { usePermissionStore } from './store'
+import ApiHandlingProvider from '@/utils/ApiHandleProvider'
+import TblSkeletonLoading from '@/components/TblSkeletonLoading'
 
 const permissionFormSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -29,39 +34,22 @@ const permissionFormSchema = z.object({
 
 type PermissionFormValues = z.infer<typeof permissionFormSchema>
 
-const initialPermissions: Permission[] = [
-  {
-    id: 1,
-    name: 'idea:create',
-    description: 'Create ideas',
-    created_at: new Date('2025-09-01'),
-  },
-  {
-    id: 2,
-    name: 'idea:review',
-    description: 'Review and moderate ideas',
-    created_at: new Date('2025-09-01'),
-  },
-  {
-    id: 3,
-    name: 'report:resolve',
-    description: 'Resolve content reports',
-    created_at: new Date('2025-09-01'),
-  },
-]
-
 const columnHelper = createColumnHelper<Permission>()
 
 export const PermissionListPage = () => {
-  const [permissions, setPermissions] = useState<Permission[]>(() => [
-    ...initialPermissions,
-  ])
+  const { items, fetchAll, create, update, remove, setPayload, isLoading } =
+    usePermissionStore()
+
   const [showFormModal, setShowFormModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [activePermission, setActivePermission] = useState<Permission | null>(
     null,
   )
+
+  useEffect(() => {
+    fetchAll()
+  }, [])
 
   const {
     register,
@@ -82,12 +70,15 @@ export const PermissionListPage = () => {
       }),
       columnHelper.accessor('created_at', {
         header: 'Created',
-        cell: ({ row }) => row.original.created_at.toLocaleDateString(),
+        cell: ({ row }) => {
+          const date = row.original.created_at
+          return date ? new Date(date).toLocaleDateString() : '—'
+        },
       }),
       {
         id: 'actions',
         header: 'Actions',
-        cell: ({ row }) => (
+        cell: ({ row }: any) => (
           <div className="d-flex gap-1">
             <Button
               variant="light"
@@ -133,42 +124,25 @@ export const PermissionListPage = () => {
     [reset],
   )
 
-  const submitForm = handleSubmit((data) => {
-    if (activePermission) {
-      setPermissions((prev) =>
-        prev.map((item) =>
-          item.id === activePermission.id
-            ? {
-                ...item,
-                name: data.name,
-                description: data.description,
-                updated_at: new Date(),
-              }
-            : item,
-        ),
-      )
+  const submitForm = handleSubmit(async (data) => {
+    setPayload(data)
+
+    if (activePermission?.id) {
+      await update(activePermission.id)
     } else {
-      setPermissions((prev) => [
-        {
-          id: Date.now(),
-          name: data.name,
-          description: data.description,
-          created_at: new Date(),
-        },
-        ...prev,
-      ])
+      await create()
     }
 
-    reset({ name: '', description: '' })
     setShowFormModal(false)
     setActivePermission(null)
+    reset({ name: '', description: '' })
+
+    fetchAll()
   })
 
-  const handleDelete = () => {
-    if (!activePermission) return
-    setPermissions((prev) =>
-      prev.filter((item) => item.id !== activePermission.id),
-    )
+  const handleDelete = async () => {
+    if (!activePermission?.id) return
+    await remove(activePermission.id)
     setShowDeleteModal(false)
     setActivePermission(null)
   }
@@ -191,19 +165,25 @@ export const PermissionListPage = () => {
           </Button>
         }
       >
-        <CommonDataTable
-          title="Permissions"
-          data={permissions}
-          columns={columns}
-          itemsName="permissions"
-          renderHeader={({ globalFilter, setGlobalFilter }) => (
-            <SearchFilter
-              value={globalFilter}
-              onChange={setGlobalFilter}
-              placeholder="Search permissions..."
-            />
-          )}
-        />
+        <ApiHandlingProvider
+          apiCalls={[isLoading]}
+          loadingComponent={<TblSkeletonLoading />}
+        >
+          <CommonDataTable
+            title="Permissions"
+            data={items}
+            columns={columns}
+            // loading={isLoading}
+            itemsName="permissions"
+            renderHeader={({ globalFilter, setGlobalFilter }) => (
+              <SearchFilter
+                value={globalFilter}
+                onChange={setGlobalFilter}
+                placeholder="Search permissions..."
+              />
+            )}
+          />
+        </ApiHandlingProvider>
       </DashboardPage>
 
       <EntityFormModal
@@ -215,6 +195,7 @@ export const PermissionListPage = () => {
         }}
         onSubmit={submitForm}
         submitLabel={activePermission ? 'Update' : 'Create'}
+        isSubmitting={isLoading}
       >
         <Form>
           <FormGroup className="mb-3">
@@ -223,12 +204,18 @@ export const PermissionListPage = () => {
               type="text"
               isInvalid={!!errors.name}
               {...register('name')}
+              placeholder="e.g., idea:create"
             />
             <div className="invalid-feedback">{errors.name?.message}</div>
           </FormGroup>
           <FormGroup>
             <FormLabel>Description</FormLabel>
-            <FormControl as="textarea" rows={3} {...register('description')} />
+            <FormControl
+              as="textarea"
+              rows={3}
+              {...register('description')}
+              placeholder="Describe what this permission allows..."
+            />
           </FormGroup>
         </Form>
       </EntityFormModal>
@@ -251,7 +238,9 @@ export const PermissionListPage = () => {
               },
               {
                 label: 'Created',
-                value: activePermission.created_at.toLocaleDateString(),
+                value: activePermission.created_at
+                  ? new Date(activePermission.created_at).toLocaleDateString()
+                  : '—',
               },
             ]}
           />
