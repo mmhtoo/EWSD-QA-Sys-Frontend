@@ -1,6 +1,8 @@
+'use client'
+
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createColumnHelper } from '@tanstack/react-table'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import {
   Button,
   Container,
@@ -21,6 +23,9 @@ import EntityFormModal from '@/components/common/EntityFormModal'
 import SearchFilter from '@/components/common/SearchFilter'
 import DeleteConfirmationModal from '@/components/table/DeleteConfirmationModal'
 import type { Department } from '@/types/entity'
+import { useDepartmentStore } from './store'
+import ApiHandlingProvider from '@/utils/ApiHandleProvider'
+import TblSkeletonLoading from '@/components/TblSkeletonLoading'
 
 const departmentFormSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -29,39 +34,22 @@ const departmentFormSchema = z.object({
 
 type DepartmentFormValues = z.infer<typeof departmentFormSchema>
 
-const initialDepartments: Department[] = [
-  {
-    id: 1,
-    name: 'Engineering',
-    description: 'Engineering and Technology',
-    created_at: new Date('2025-09-01'),
-  },
-  {
-    id: 2,
-    name: 'Business',
-    description: 'Business and Management',
-    created_at: new Date('2025-09-01'),
-  },
-  {
-    id: 3,
-    name: 'Arts',
-    description: 'Arts and Humanities',
-    created_at: new Date('2025-09-01'),
-  },
-]
-
 const columnHelper = createColumnHelper<Department>()
 
 export const DepartmentListPage = () => {
-  const [departments, setDepartments] = useState<Department[]>(() => [
-    ...initialDepartments,
-  ])
+  const { items, fetchAll, create, update, remove, setPayload, isLoading } =
+    useDepartmentStore()
+
   const [showFormModal, setShowFormModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [activeDepartment, setActiveDepartment] = useState<Department | null>(
     null,
   )
+
+  useEffect(() => {
+    fetchAll()
+  }, [])
 
   const {
     register,
@@ -82,12 +70,18 @@ export const DepartmentListPage = () => {
       }),
       columnHelper.accessor('created_at', {
         header: 'Created',
-        cell: ({ row }) => row.original.created_at.toLocaleDateString(),
+        cell: ({ row }) => {
+          const date = row.original.created_at
+          // Handle both Date objects and string ISOs from API
+          return date instanceof Date
+            ? date.toLocaleDateString()
+            : new Date(date).toLocaleDateString()
+        },
       }),
       {
         id: 'actions',
         header: 'Actions',
-        cell: ({ row }) => (
+        cell: ({ row }: { row: any }) => (
           <div className="d-flex gap-1">
             <Button
               variant="light"
@@ -133,42 +127,24 @@ export const DepartmentListPage = () => {
     [reset],
   )
 
-  const submitForm = handleSubmit((data) => {
-    if (activeDepartment) {
-      setDepartments((prev) =>
-        prev.map((item) =>
-          item.id === activeDepartment.id
-            ? {
-                ...item,
-                name: data.name,
-                description: data.description,
-                updated_at: new Date(),
-              }
-            : item,
-        ),
-      )
+  const submitForm = handleSubmit(async (data) => {
+    setPayload(data)
+
+    if (activeDepartment?.id) {
+      await update(activeDepartment.id)
     } else {
-      setDepartments((prev) => [
-        {
-          id: Date.now(),
-          name: data.name,
-          description: data.description,
-          created_at: new Date(),
-        },
-        ...prev,
-      ])
+      await create()
     }
 
     reset({ name: '', description: '' })
     setShowFormModal(false)
     setActiveDepartment(null)
+    fetchAll()
   })
 
-  const handleDelete = () => {
-    if (!activeDepartment) return
-    setDepartments((prev) =>
-      prev.filter((item) => item.id !== activeDepartment.id),
-    )
+  const handleDelete = async () => {
+    if (!activeDepartment?.id) return
+    await remove(activeDepartment.id)
     setShowDeleteModal(false)
     setActiveDepartment(null)
   }
@@ -191,19 +167,25 @@ export const DepartmentListPage = () => {
           </Button>
         }
       >
-        <CommonDataTable
-          title="Departments"
-          data={departments}
-          columns={columns}
-          itemsName="departments"
-          renderHeader={({ globalFilter, setGlobalFilter }) => (
-            <SearchFilter
-              value={globalFilter}
-              onChange={setGlobalFilter}
-              placeholder="Search departments..."
-            />
-          )}
-        />
+        <ApiHandlingProvider
+          apiCalls={[isLoading]}
+          loadingComponent={<TblSkeletonLoading />}
+        >
+          <CommonDataTable
+            title="Departments"
+            data={items}
+            columns={columns}
+            // loading={isLoading}
+            itemsName="departments"
+            renderHeader={({ globalFilter, setGlobalFilter }) => (
+              <SearchFilter
+                value={globalFilter}
+                onChange={setGlobalFilter}
+                placeholder="Search departments..."
+              />
+            )}
+          />
+        </ApiHandlingProvider>
       </DashboardPage>
 
       <EntityFormModal
@@ -251,7 +233,9 @@ export const DepartmentListPage = () => {
               },
               {
                 label: 'Created',
-                value: activeDepartment.created_at.toLocaleDateString(),
+                value: new Date(
+                  activeDepartment.created_at,
+                ).toLocaleDateString(),
               },
             ]}
           />

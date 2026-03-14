@@ -1,8 +1,8 @@
-import {StrictMode} from 'react'
-import {createRoot} from 'react-dom/client'
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
-import {BrowserRouter} from "react-router";
-import AppWrapper from "./components/AppWrapper.tsx";
+import { BrowserRouter } from 'react-router'
+import AppWrapper from './components/AppWrapper.tsx'
 
 import 'datatables.net-buttons-bs5/css/buttons.bootstrap5.min.css'
 import 'datatables.net-fixedheader-bs5/css/fixedHeader.bootstrap5.min.css'
@@ -27,12 +27,27 @@ import 'sweetalert2/dist/sweetalert2.min.css'
 
 import '@/assets/scss/app.scss'
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from 'react-hot-toast'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+})
+
 createRoot(document.getElementById('root')!).render(
-    <StrictMode>
-        <BrowserRouter >
-            <AppWrapper>
-                <App/>
-            </AppWrapper>
-        </BrowserRouter>
-    </StrictMode>,
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AppWrapper>
+          <Toaster />
+          <App />
+        </AppWrapper>
+      </BrowserRouter>
+    </QueryClientProvider>
+  </StrictMode>,
 )

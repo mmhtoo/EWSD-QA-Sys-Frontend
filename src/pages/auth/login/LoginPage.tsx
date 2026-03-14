@@ -1,16 +1,57 @@
-import AppLogo from '@/components/AppLogo'
-import { AppRoutes } from '@/configs/routes'
-import { appName, author, currentYear } from '@/helpers'
-import { Card, CardBody, Col, FormControl, Row } from 'react-bootstrap'
+import { useState } from 'react'
+import {
+  Card,
+  CardBody,
+  Col,
+  FormControl,
+  Row,
+  Form,
+  Alert,
+  Spinner,
+} from 'react-bootstrap'
 import { LuCircleUser, LuKeyRound } from 'react-icons/lu'
 import { useNavigate } from 'react-router'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import axios from '@/lib/axios'
+import { useMutation } from '@tanstack/react-query'
+
+import AppLogo from '@/components/AppLogo'
+import { AppRoutes } from '@/configs/routes'
+import { author, currentYear } from '@/helpers'
+
+const loginSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+})
+
+type LoginFormValues = z.infer<typeof loginSchema>
 
 export function LoginPage() {
   const navigate = useNavigate()
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    navigate(AppRoutes.DASHBOARD_HOME.fullPath)
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+  })
+
+  const loginMutation = useMutation({
+    mutationFn: async (data: LoginFormValues) => {
+      const response = await axios.post('/login', data)
+      return response.data
+    },
+    onSuccess: (data) => {
+      localStorage.setItem('token', JSON.stringify(data))
+      navigate(AppRoutes.DASHBOARD_HOME.fullPath)
+    },
+  })
+
+  const onSubmit = (data: LoginFormValues) => {
+    loginMutation.mutate(data)
   }
 
   return (
@@ -175,44 +216,68 @@ export function LoginPage() {
                   Let’s get you signed in. Enter your email and password to
                   continue.
                 </p>
-                <form className="mt-4" onSubmit={handleSubmit}>
+
+                {loginMutation.isError && (
+                  <Alert variant="danger" className="mt-3">
+                    {'Invalid email or password'}
+                  </Alert>
+                )}
+
+                <Form className="mt-4" onSubmit={handleSubmit(onSubmit)}>
                   <div className="mb-3">
                     <label htmlFor="userEmail" className="form-label">
                       Email address <span className="text-danger">*</span>
                     </label>
                     <div className="app-search">
                       <FormControl
+                        {...register('email')}
                         type="email"
                         id="userEmail"
                         placeholder="you@example.com"
-                        required
+                        isInvalid={!!errors.email}
                       />
                       <LuCircleUser className="app-search-icon text-muted" />
+                      <Form.Control.Feedback type="invalid">
+                        {errors.email?.message}
+                      </Form.Control.Feedback>
                     </div>
                   </div>
+
                   <div className="mb-3">
                     <label htmlFor="userPassword" className="form-label">
                       Password <span className="text-danger">*</span>
                     </label>
                     <div className="app-search">
                       <FormControl
+                        {...register('password')}
                         type="password"
                         id="userPassword"
                         placeholder="••••••••"
-                        required
+                        isInvalid={!!errors.password}
                       />
                       <LuKeyRound className="app-search-icon text-muted" />
+                      <Form.Control.Feedback type="invalid">
+                        {errors.password?.message}
+                      </Form.Control.Feedback>
                     </div>
                   </div>
+
                   <div className="d-grid">
                     <button
                       type="submit"
                       className="btn btn-primary fw-bold py-2"
+                      disabled={loginMutation.isPending}
                     >
-                      Sign In
+                      {loginMutation.isPending ? (
+                        <>
+                          <Spinner size="sm" className="me-2" /> Signing In...
+                        </>
+                      ) : (
+                        'Sign In'
+                      )}
                     </button>
                   </div>
-                </form>
+                </Form>
               </div>
 
               <p className="text-center text-muted mt-auto mb-0">

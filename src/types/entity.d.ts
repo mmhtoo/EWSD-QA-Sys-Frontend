@@ -12,6 +12,7 @@ interface BaseMetadata {
 // --- User & Access Management ---
 
 export interface User extends BaseMetadata {
+  role?: string
   role_id: number
   department_id: number
   name: string
