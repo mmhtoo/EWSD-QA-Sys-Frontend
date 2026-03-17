@@ -17,6 +17,7 @@ interface CrudState<T> {
   create: () => Promise<void>
   update: (id: string | number) => Promise<void>
   remove: (id: string | number) => Promise<void>
+  fetchRefreshToken: () => Promise<void>
 
   // Form helpers
   setFormValues: (values: Partial<T>) => void
@@ -92,7 +93,7 @@ export const createCrudStore = <T extends { id?: string | number }>(
     update: async (id) => {
       set({ isLoading: true, error: null })
       try {
-        const { data } = await axios.patch(`${endpoint}/${id}`, get().payload)
+        const { data } = await axios.put(`${endpoint}/${id}`, get().payload)
 
         set((state) => ({
           items: state.items.map((item) => (item.id === id ? data : item)),
@@ -119,6 +120,38 @@ export const createCrudStore = <T extends { id?: string | number }>(
           isLoading: false,
         }))
         toast.success('Success')
+      } catch (err: any) {
+        toast.error('Something went wrong')
+        set({
+          error: err?.response?.data?.message || err.message,
+          isLoading: false,
+        })
+      }
+    },
+
+    fetchRefreshToken: async () => {
+      set({ isLoading: true, error: null })
+
+      try {
+        const refresh_token = JSON.parse(
+          localStorage.getItem('token')!,
+        )?.refresh_token
+
+        const res = await axios.post('/auth/refresh-token', { refresh_token })
+
+        const oldStorage = JSON.parse(localStorage.getItem('token')!)
+
+        localStorage.setItem(
+          'token',
+          JSON.stringify({
+            ...oldStorage,
+            access_token: res.data.access_token,
+            refresh_token: res.data.refresh_token,
+          }),
+        )
+        set({
+          isLoading: false,
+        })
       } catch (err: any) {
         toast.error('Something went wrong')
         set({

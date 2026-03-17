@@ -34,6 +34,7 @@ import { useIdeaCategoryStore } from '../master/idea-category/store'
 import { useAcademicYearStore } from '../master/academic-year/store'
 import ApiHandlingProvider from '@/utils/ApiHandleProvider'
 import TblSkeletonLoading from '@/components/TblSkeletonLoading'
+import axios from '@/lib/axios'
 
 // Schema matches your Form requirements
 const ideaFormSchema = z.object({
@@ -53,6 +54,8 @@ type IdeaFormValues = z.infer<typeof ideaFormSchema>
 const columnHelper = createColumnHelper<any>()
 
 export const IdeaListPage = () => {
+  const [isSubmitLoading, setIsSubmitLoading] = useState(false)
+
   const {
     items,
     fetchAll,
@@ -84,7 +87,7 @@ export const IdeaListPage = () => {
     fetchAll()
     fetchCategories()
     fetchAcademicYears()
-  }, [fetchAll, fetchCategories, fetchAcademicYears])
+  }, [])
 
   const {
     register,
@@ -127,7 +130,7 @@ export const IdeaListPage = () => {
           )
           return (
             <Badge bg="info-subtle" className="text-info">
-              {cat?.name || 'Loading...'}
+              {cat?.name || 'N/A'}
             </Badge>
           )
         },
@@ -197,31 +200,42 @@ export const IdeaListPage = () => {
   )
 
   const submitForm = handleSubmit(async (data) => {
-    const formData = new FormData()
-    formData.append('title', data.title)
-    formData.append('content', data.content)
-    formData.append('idea_category_id', String(data.categoryId))
-    formData.append('academic_year_id', String(data.academicYearId))
-    formData.append('is_annonymous', data.isAnonymous ? '1' : '0')
+    try {
+      let fileUrl = activeIdea?.fileUrl || ''
 
-    if (uploadFiles && uploadFiles.length > 0) {
-      uploadFiles.forEach((file) => {
-        formData.append('file_url', file)
+      if (uploadFiles && uploadFiles.length > 0) {
+        const formData = new FormData()
+        formData.append('file', uploadFiles[0])
+
+        const uploadRes = await axios.post(`/ideas/file-upload`, formData)
+
+        fileUrl = uploadRes.data.file_url
+      }
+
+      setPayload({
+        ...data,
+        academicYearId: undefined,
+        categoryId: undefined,
+        academic_year_id: Number(data.academicYearId),
+        idea_category_id: Number(data.categoryId),
+        fileUrl,
       })
+
+      if (activeIdea?.id) {
+        await update(activeIdea?.id)
+      } else {
+        await create()
+      }
+
+      setShowFormModal(false)
+      setActiveIdea(null)
+      setUploadFiles([])
+      fetchAll()
+    } catch (error) {
+      console.error('Update failed:', error)
+    } finally {
+      setIsSubmitLoading(false)
     }
-
-    setPayload(formData)
-
-    if (activeIdea?.id) {
-      await update(activeIdea.id)
-    } else {
-      await create()
-    }
-
-    setShowFormModal(false)
-    setActiveIdea(null)
-    setUploadFiles([])
-    fetchAll()
   })
 
   return (
@@ -251,7 +265,7 @@ export const IdeaListPage = () => {
         }
       >
         <ApiHandlingProvider
-          apiCalls={[isLoadingIdea, isLoadingCategories, isLoadingAcademicYear]}
+          apiCalls={[isLoadingIdea, isLoadingCategories]}
           loadingComponent={<TblSkeletonLoading />}
         >
           <CommonDataTable
@@ -278,6 +292,7 @@ export const IdeaListPage = () => {
         onHide={() => setShowFormModal(false)}
         onSubmit={submitForm}
         submitLabel={activeIdea ? 'Update' : 'Create'}
+        isSubmitting={isSubmitLoading}
       >
         <Form>
           <Row>

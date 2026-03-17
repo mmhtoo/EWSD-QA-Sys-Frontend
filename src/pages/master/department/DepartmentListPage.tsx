@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { createColumnHelper } from '@tanstack/react-table'
 import { useMemo, useState, useEffect } from 'react'
 import {
+  Badge,
   Button,
   Container,
   Form,
@@ -82,7 +83,7 @@ export const DepartmentListPage = () => {
         id: 'actions',
         header: 'Actions',
         cell: ({ row }: { row: any }) => (
-          <div className="d-flex gap-1">
+          <div className="d-flex gap-1 align-items-center">
             <Button
               variant="light"
               size="sm"
@@ -113,6 +114,7 @@ export const DepartmentListPage = () => {
               variant="danger"
               size="sm"
               className="btn-icon rounded-circle"
+              disabled={row.original.is_in_use}
               onClick={() => {
                 setActiveDepartment(row.original)
                 setShowDeleteModal(true)
@@ -120,6 +122,11 @@ export const DepartmentListPage = () => {
             >
               <TbTrash className="fs-lg" />
             </Button>
+            {row.original.is_in_use && (
+              <Badge bg="secondary-subtle" className="text-secondary">
+                In use
+              </Badge>
+            )}
           </div>
         ),
       },

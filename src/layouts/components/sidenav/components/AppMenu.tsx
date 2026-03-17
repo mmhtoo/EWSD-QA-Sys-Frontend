@@ -6,6 +6,7 @@ import { Link, useLocation, useNavigate } from 'react-router'
 import { useEffect, useState } from 'react'
 import { Collapse } from 'react-bootstrap'
 import { TbChevronDown } from 'react-icons/tb'
+import { hasPermission } from '@/utils/rbac'
 
 const MenuItemWithChildren = ({
   item,
@@ -175,13 +176,24 @@ const AppMenu = () => {
     }
   }
 
+  const filteredMenuItems = menuItems.filter((item) => {
+    if (
+      !item.permission ||
+      (Array.isArray(item.permission) && item.permission.length === 0)
+    ) {
+      return true
+    }
+
+    return hasPermission(item.permission)
+  })
+
   useEffect(() => {
     setTimeout(() => scrollToActiveLink(), 100)
   }, [])
 
   return (
     <ul className="side-nav">
-      {menuItems.map((item) =>
+      {filteredMenuItems.map((item) =>
         item.isTitle ? (
           <li className={'side-nav-title mt-2'} key={item.key}>
             {item.label}

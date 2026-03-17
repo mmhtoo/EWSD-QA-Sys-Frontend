@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { createColumnHelper } from '@tanstack/react-table'
 import { useMemo, useState, useEffect } from 'react'
 import {
+  Badge,
   Button,
   Col,
   Container,
@@ -103,55 +104,63 @@ export const AcademicYearListPage = () => {
       {
         id: 'actions',
         header: 'Actions',
-        cell: ({ row }: any) => (
-          <div className="d-flex gap-1">
-            <Button
-              variant="light"
-              size="sm"
-              className="btn-icon rounded-circle"
-              onClick={() => {
-                setActiveYear(row.original)
-                setShowDetailModal(true)
-              }}
-            >
-              <TbEye className="fs-lg" />
-            </Button>
-            <Button
-              variant="light"
-              size="sm"
-              className="btn-icon rounded-circle"
-              onClick={() => {
-                setActiveYear(row.original)
-                reset({
-                  name: row.original.name,
-                  code: row.original.code,
-                  fromDate: formatForInput(row.original.from_date),
-                  toDate: formatForInput(row.original.to_date),
-                  submissionDeadline: formatForInput(
-                    row.original.submission_deadline,
-                  ),
-                  feedbackCutOffDeadline: formatForInput(
-                    row.original.feedback_cut_off_deadline,
-                  ),
-                })
-                setShowFormModal(true)
-              }}
-            >
-              <TbEdit className="fs-lg" />
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              className="btn-icon rounded-circle"
-              onClick={() => {
-                setActiveYear(row.original)
-                setShowDeleteModal(true)
-              }}
-            >
-              <TbTrash className="fs-lg" />
-            </Button>
-          </div>
-        ),
+        cell: ({ row }: any) => {
+          return (
+            <div className="d-flex gap-1">
+              <Button
+                variant="light"
+                size="sm"
+                className="btn-icon rounded-circle"
+                onClick={() => {
+                  setActiveYear(row.original)
+                  setShowDetailModal(true)
+                }}
+              >
+                <TbEye className="fs-lg" />
+              </Button>
+              <Button
+                variant="light"
+                size="sm"
+                className="btn-icon rounded-circle"
+                onClick={() => {
+                  setActiveYear(row.original)
+                  reset({
+                    name: row.original.name,
+                    code: row.original.code,
+                    fromDate: formatForInput(row.original.from_date),
+                    toDate: formatForInput(row.original.to_date),
+                    submissionDeadline: formatForInput(
+                      row.original.submission_deadline,
+                    ),
+                    feedbackCutOffDeadline: formatForInput(
+                      row.original.feedback_cut_off_deadline,
+                    ),
+                  })
+                  setShowFormModal(true)
+                }}
+              >
+                <TbEdit className="fs-lg" />
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                className="btn-icon rounded-circle"
+                disabled={row.original.is_in_use}
+                onClick={() => {
+                  setActiveYear(row.original)
+                  setShowDeleteModal(true)
+                }}
+              >
+                <TbTrash className="fs-lg" />
+              </Button>
+              {row.original.is_in_use && (
+                <Badge bg="secondary-subtle" className="text-secondary">
+                  In use
+                </Badge>
+              )}
+            </div>
+          )
+        },
       },
     ],
     [reset],

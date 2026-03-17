@@ -19,7 +19,7 @@ export interface User extends BaseMetadata {
   email: string
   password_hash: string
   position?: string
-  profile_image_url?: string
+  profile_url?: string
 }
 
 export interface Role extends BaseMetadata {
@@ -60,7 +60,7 @@ export interface Idea extends BaseMetadata {
   academic_year_id: number
   title: string
   content: string
-  file_image_url?: string
+  file_url?: string
   is_anonymous: boolean
 }
 
