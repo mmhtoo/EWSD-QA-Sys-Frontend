@@ -12,6 +12,7 @@ import {
   FormLabel,
   Row,
   Col,
+  Badge,
 } from 'react-bootstrap'
 import { useForm } from 'react-hook-form'
 import { TbEdit, TbEye, TbPlus, TbTrash } from 'react-icons/tb'
@@ -49,6 +50,7 @@ export const RoleListPage = () => {
 
   const {
     items,
+    fetchRefreshToken,
     fetchAll,
     create,
     update,
@@ -100,7 +102,11 @@ export const RoleListPage = () => {
       columnHelper.accessor('name', { header: 'Role' }),
       columnHelper.accessor('description', {
         header: 'Description',
-        cell: ({ row }) => row.original.description || '—',
+        cell: ({ row }) => (
+          <div className="text-truncate" style={{ maxWidth: '300px' }}>
+            {row.original.description || '—'}
+          </div>
+        ),
       }),
       columnHelper.accessor('created_at', {
         header: 'Created',
@@ -113,7 +119,7 @@ export const RoleListPage = () => {
         id: 'actions',
         header: 'Actions',
         cell: ({ row }: any) => (
-          <div className="d-flex gap-1">
+          <div className="d-flex gap-1 align-items-center">
             <Button
               variant="light"
               size="sm"
@@ -130,6 +136,8 @@ export const RoleListPage = () => {
               size="sm"
               className="btn-icon rounded-circle"
               onClick={async () => {
+                fetchById(row.original.id)
+
                 setActiveRole(row.original)
                 await fetchById(row.original.id)
                 setShowFormModal(true)
@@ -141,6 +149,7 @@ export const RoleListPage = () => {
               variant="danger"
               size="sm"
               className="btn-icon rounded-circle"
+              disabled={row.original.is_in_use}
               onClick={() => {
                 setActiveRole(row.original)
                 setShowDeleteModal(true)
@@ -148,6 +157,11 @@ export const RoleListPage = () => {
             >
               <TbTrash className="fs-lg" />
             </Button>
+            {row.original.is_in_use && (
+              <Badge bg="secondary-subtle" className="text-secondary">
+                In use
+              </Badge>
+            )}
           </div>
         ),
       },
@@ -177,6 +191,8 @@ export const RoleListPage = () => {
       })
       await rolePermissionAttachStore()
     }
+
+    await fetchRefreshToken()
 
     setShowFormModal(false)
     setActiveRole(null)

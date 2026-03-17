@@ -1,7 +1,14 @@
 import type { Variant } from 'react-bootstrap/esm/types'
 import type { IconType } from 'react-icons'
 
-export type LayoutSkinType = 'default' | 'material' | 'modern' | 'saas' | 'flat' | 'minimal' | 'galaxy'
+export type LayoutSkinType =
+  | 'default'
+  | 'material'
+  | 'modern'
+  | 'saas'
+  | 'flat'
+  | 'minimal'
+  | 'galaxy'
 
 export type LayoutThemeType = 'light' | 'dark' | 'system'
 
@@ -12,7 +19,13 @@ export type TopBarType = {
 }
 
 export type SideNavType = {
-  size: 'default' | 'compact' | 'condensed' | 'on-hover' | 'on-hover-active' | 'offcanvas'
+  size:
+    | 'default'
+    | 'compact'
+    | 'condensed'
+    | 'on-hover'
+    | 'on-hover-active'
+    | 'offcanvas'
   color: 'light' | 'dark' | 'gray' | 'gradient' | 'image'
   user: boolean
   isMobileMenuOpen: boolean
@@ -45,14 +58,20 @@ export type OffcanvasControlType = {
 export interface LayoutType extends LayoutState {
   changeSkin: (skin: LayoutSkinType, persist?: boolean) => void
   changeTheme: (theme: LayoutThemeType, persist?: boolean) => void
-  changeOrientation: (orientation: LayoutOrientationType, persist?: boolean) => void
+  changeOrientation: (
+    orientation: LayoutOrientationType,
+    persist?: boolean,
+  ) => void
   changeTopBarColor: (color: TopBarType['color'], persist?: boolean) => void
   changeSideNavSize: (size: SideNavType['size'], persist?: boolean) => void
   changeSideNavColor: (color: SideNavType['color'], persist?: boolean) => void
   toggleSideNavUser: () => void
   toggleMonochromeMode: () => void
   toggleMobileMenu: (isMobileMenuOpen: SideNavType['isMobileMenuOpen']) => void
-  changeLayoutPosition: (position: LayoutPositionType, persist?: boolean) => void
+  changeLayoutPosition: (
+    position: LayoutPositionType,
+    persist?: boolean,
+  ) => void
   changeLayoutWidth: (width: LayoutWidthType, persist?: boolean) => void
   customizer: OffcanvasControlType
   reset: () => void
@@ -75,4 +94,5 @@ export type MenuItemType = {
   isDisabled?: boolean
   isSpecial?: boolean
   children?: MenuItemType[]
+  permission?: string[]
 }

@@ -87,8 +87,8 @@ export const ReportCategoryListPage = () => {
       {
         id: 'actions',
         header: 'Actions',
-        cell: ({ row }) => (
-          <div className="d-flex gap-1">
+        cell: ({ row }: any) => (
+          <div className="d-flex gap-1 align-items-center">
             <Button
               variant="light"
               size="sm"
