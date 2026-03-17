@@ -10,8 +10,10 @@ import UserProfile from '@/layouts/components/sidenav/components/UserProfile'
 import { Link, useNavigate } from 'react-router'
 import { TbMenu4, TbPlus, TbX } from 'react-icons/tb'
 import SimpleBar from 'simplebar-react'
+import { useIdeaSpecificStore } from '@/pages/idea/store'
 
 const Sidenav = () => {
+  const { setShowFormModal } = useIdeaSpecificStore()
   const { sidenav, hideBackdrop, changeSideNavSize } = useLayoutContext()
   const { openNewIdeaModal } = useIdeaModalContext()
   const navigate = useNavigate()
@@ -67,6 +69,7 @@ const Sidenav = () => {
             onClick={() => {
               navigate(AppRoutes.IDEA_LIST.fullPath)
               openNewIdeaModal()
+              setShowFormModal(true)
             }}
           >
             <TbPlus className="fs-18" />

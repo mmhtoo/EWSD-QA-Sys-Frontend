@@ -29,7 +29,7 @@ import EntityDetailModal from '@/components/common/EntityDetailModal'
 import EntityFormModal from '@/components/common/EntityFormModal'
 import SearchFilter from '@/components/common/SearchFilter'
 
-import { useIdeaStore } from './store'
+import { useIdeaSpecificStore, useIdeaStore } from './store'
 import { useIdeaCategoryStore } from '../master/idea-category/store'
 import { useAcademicYearStore } from '../master/academic-year/store'
 import ApiHandlingProvider from '@/utils/ApiHandleProvider'
@@ -77,7 +77,8 @@ export const IdeaListPage = () => {
     isLoading: isLoadingAcademicYear,
   } = useAcademicYearStore()
 
-  const [showFormModal, setShowFormModal] = useState(false)
+  const { showFormModal, setShowFormModal } = useIdeaSpecificStore()
+
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [activeIdea, setActiveIdea] = useState<any | null>(null)
