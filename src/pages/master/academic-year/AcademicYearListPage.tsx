@@ -46,8 +46,16 @@ type AcademicYearFormValues = z.infer<typeof academicYearFormSchema>
 const columnHelper = createColumnHelper<AcademicYear>()
 
 export const AcademicYearListPage = () => {
-  const { items, fetchAll, create, update, remove, setPayload, isLoading } =
-    useAcademicYearStore()
+  const {
+    items,
+    fetchAll,
+    create,
+    update,
+    remove,
+    setPayload,
+    isLoading,
+    fetchById,
+  } = useAcademicYearStore()
 
   const [showFormModal, setShowFormModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
@@ -123,6 +131,7 @@ export const AcademicYearListPage = () => {
                 size="sm"
                 className="btn-icon rounded-circle"
                 onClick={() => {
+                  fetchById(row.original.id)
                   setActiveYear(row.original)
                   reset({
                     name: row.original.name,

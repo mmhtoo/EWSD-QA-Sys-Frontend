@@ -35,6 +35,7 @@ import { useAcademicYearStore } from '../master/academic-year/store'
 import ApiHandlingProvider from '@/utils/ApiHandleProvider'
 import TblSkeletonLoading from '@/components/TblSkeletonLoading'
 import axios from '@/lib/axios'
+import { getMimeType } from '@/utils'
 
 // Schema matches your Form requirements
 const ideaFormSchema = z.object({
@@ -56,6 +57,8 @@ const columnHelper = createColumnHelper<any>()
 export const IdeaListPage = () => {
   const [isSubmitLoading, setIsSubmitLoading] = useState(false)
 
+  const ideaStore = useMemo(() => useIdeaStore(), [])
+
   const {
     items,
     fetchAll,
@@ -65,7 +68,9 @@ export const IdeaListPage = () => {
     setPayload,
     fetchById,
     isLoading: isLoadingIdea,
-  } = useIdeaStore()
+    activeItem,
+  } = ideaStore()
+
   const {
     items: categories,
     fetchAll: fetchCategories,
@@ -127,11 +132,11 @@ export const IdeaListPage = () => {
         header: 'Category',
         cell: ({ row }) => {
           const cat = categories?.find(
-            (c) => c.id === row.original.idea_category_id,
+            (c) => c.id === row.original.idea_category,
           )
           return (
             <Badge bg="info-subtle" className="text-info">
-              {cat?.name || 'N/A'}
+              {row.original.idea_category || 'N/A'}
             </Badge>
           )
         },
@@ -166,17 +171,38 @@ export const IdeaListPage = () => {
               variant="light"
               size="sm"
               className="btn-icon rounded-circle"
-              onClick={() => {
-                fetchById(row.original.id)
-                setActiveIdea(row.original)
+              onClick={async () => {
+                await fetchById(row.original.id)
+
+                const latestItem = ideaStore.getState().activeItem
+
+                setActiveIdea(latestItem || row.original)
+
+                const itemToBind = latestItem || row.original
+
+                if (itemToBind?.file_url) {
+                  const existingFile = {
+                    //itemToBind.file_url.split('/').pop() ||
+                    name: 'Attachment',
+                    size: 0,
+                    type: getMimeType(itemToBind.file_url),
+                    preview: itemToBind.file_url,
+                    isExisting: true,
+                  }
+                  setUploadFiles([existingFile as any])
+                } else {
+                  setUploadFiles([])
+                }
+
                 reset({
-                  title: row.original.title,
-                  content: row.original.content,
-                  categoryId: String(row.original.idea_category_id),
-                  academicYearId: String(row.original.academic_year_id),
-                  isAnonymous: !!row.original.is_annonymous,
+                  title: itemToBind.title,
+                  content: itemToBind.content,
+                  categoryId: String(itemToBind.idea_category_id),
+                  academicYearId: String(itemToBind.academic_year_id),
+                  isAnonymous: !!itemToBind.is_annonymous,
                   terms: true,
                 })
+
                 setShowFormModal(true)
               }}
             >
@@ -201,29 +227,36 @@ export const IdeaListPage = () => {
   )
 
   const submitForm = handleSubmit(async (data) => {
+    setIsSubmitLoading(true)
     try {
-      let fileUrl = activeIdea?.fileUrl || ''
+      let fileUrl = activeIdea?.file_url || ''
 
       if (uploadFiles && uploadFiles.length > 0) {
-        const formData = new FormData()
-        formData.append('file', uploadFiles[0])
+        const activeFile = uploadFiles[0] as any
 
-        const uploadRes = await axios.post(`/ideas/file-upload`, formData)
+        if (!activeFile.isExisting) {
+          const formData = new FormData()
+          formData.append('file', activeFile)
 
-        fileUrl = uploadRes.data.file_url
+          const uploadRes = await axios.post(`/ideas/file-upload`, formData)
+          fileUrl = uploadRes.data.file_url
+        } else {
+          fileUrl = activeFile.preview
+        }
+      } else {
+        fileUrl = ''
       }
 
       setPayload({
         ...data,
-        academicYearId: undefined,
-        categoryId: undefined,
         academic_year_id: Number(data.academicYearId),
         idea_category_id: Number(data.categoryId),
-        fileUrl,
+        is_annonymous: data.isAnonymous,
+        file_url: fileUrl,
       })
 
       if (activeIdea?.id) {
-        await update(activeIdea?.id)
+        await update(activeIdea.id)
       } else {
         await create()
       }

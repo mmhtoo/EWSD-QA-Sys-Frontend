@@ -1,8 +1,11 @@
-import {Link} from "react-router";
-import {type HTMLAttributes, useCallback, useEffect } from 'react'
-import { Button, Card, Col, Row } from 'react-bootstrap'
-import Dropzone, {type DropzoneProps,type DropzoneState,type FileRejection } from 'react-dropzone'
-import { TbCloudUpload, TbX } from 'react-icons/tb'
+import { type HTMLAttributes, useCallback, useEffect, useState } from 'react'
+import { Button, Card, Col, Row, Spinner } from 'react-bootstrap'
+import Dropzone, {
+  type DropzoneProps,
+  type DropzoneState,
+  type FileRejection,
+} from 'react-dropzone'
+import { TbCloudUpload, TbX, TbDownload } from 'react-icons/tb'
 
 import FileExtensionWithPreview from '@/components/FileExtensionWithPreview'
 import { useNotificationContext } from '@/context/useNotificationContext'
@@ -43,8 +46,12 @@ const FileUploader = (props: FileUploaderProps) => {
     onUpload,
     accept = {
       'image/*': [],
+      'application/pdf': ['.pdf'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+        ['.docx'],
+      'application/msword': ['.doc'], 
     },
-    maxSize = 1024 * 1024 * 2,
+    maxSize = 1024 * 1024 * 100,
     maxFileCount = 1,
     multiple = false,
     disabled = false,
@@ -57,12 +64,18 @@ const FileUploader = (props: FileUploaderProps) => {
   const onDrop = useCallback(
     (acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
       if (!multiple && maxFileCount === 1 && acceptedFiles.length > 1) {
-        showNotification({ message: 'Cannot upload more than 1 file at a time', variant: 'danger' })
+        showNotification({
+          message: 'Cannot upload more than 1 file at a time',
+          variant: 'danger',
+        })
         return
       }
 
       if ((files?.length ?? 0) + acceptedFiles.length > maxFileCount) {
-        showNotification({ message: `Cannot upload more than ${maxFileCount} files`, variant: 'danger' })
+        showNotification({
+          message: `Cannot upload more than ${maxFileCount} files`,
+          variant: 'danger',
+        })
         return
       }
 
@@ -73,30 +86,18 @@ const FileUploader = (props: FileUploaderProps) => {
       )
 
       const updatedFiles = files ? [...files, ...newFiles] : newFiles
-
       setFiles(updatedFiles)
 
       if (rejectedFiles.length > 0) {
         rejectedFiles.forEach(({ file }: FileRejection) => {
-          showNotification({ message: `File ${file.name} was rejected`, variant: 'danger' })
+          showNotification({
+            message: `File ${file.name} was rejected`,
+            variant: 'danger',
+          })
         })
       }
-
-      if (onUpload && updatedFiles.length > 0 && updatedFiles.length <= maxFileCount) {
-        const target = updatedFiles.length > 0 ? `${updatedFiles.length} files` : `file`
-
-        onUpload(updatedFiles)
-          .then(() => {
-            showNotification({ message: `${target} uploaded`, variant: 'success' })
-            setFiles([])
-          })
-          .catch(() => {
-            showNotification({ message: `Failed to upload ${target}`, variant: 'danger' })
-          })
-      }
     },
-
-    [files, maxFileCount, multiple, onUpload, setFiles],
+    [files, maxFileCount, multiple, setFiles, showNotification],
   )
 
   function onRemove(index: number) {
@@ -110,11 +111,13 @@ const FileUploader = (props: FileUploaderProps) => {
       if (!files) return
       files.forEach((file) => {
         if (isFileWithPreview(file)) {
-          URL.revokeObjectURL(file.preview)
+          if (file.preview.startsWith('blob:')) {
+            URL.revokeObjectURL(file.preview)
+          }
         }
       })
     }
-  }, [])
+  }, [files])
 
   const isDisabled = disabled || (files?.length ?? 0) >= maxFileCount
 
@@ -124,50 +127,114 @@ const FileUploader = (props: FileUploaderProps) => {
         onDrop={onDrop}
         accept={accept}
         maxSize={maxSize}
-        minSize={9}
+        minSize={0}
         maxFiles={maxFileCount}
         multiple={maxFileCount > 1 || multiple}
-        disabled={isDisabled}>
+        disabled={isDisabled}
+      >
         {({ getRootProps, getInputProps }: DropzoneState) => (
-          <div className={clsx('dropzone', className)} {...getRootProps()} {...dropzoneProps}>
+          <div
+            className={clsx(
+              'dropzone border-dashed border-2 text-center p-4 rounded',
+              className,
+            )}
+            {...getRootProps()}
+            {...dropzoneProps}
+          >
             <input {...getInputProps()} />
             <div className="dz-message needsclick">
               <div className="avatar-lg mx-auto mb-3">
-                <span className="avatar-title bg-info-subtle text-info rounded-circle">
-                  <TbCloudUpload className="fs-24" />
+                <span
+                  className="avatar-title bg-info-subtle text-info rounded-circle d-inline-flex align-items-center justify-content-center"
+                  style={{ width: '60px', height: '60px' }}
+                >
+                  <TbCloudUpload size={30} />
                 </span>
               </div>
-              <h4 className="mb-2">Drop files here or click to upload.</h4>
-              <p className="text-muted fst-italic mb-3">You can drag images here, or browse files via the button below.</p>
-              <button type="button" className="btn btn-sm shadow btn-default">
-                Browse Images
-              </button>
+              <h5 className="mb-2">Drop files here or click to upload.</h5>
+              <p className="text-muted small mb-0">
+                Allowed: Images, PDF, DOC, DOCX
+              </p>
             </div>
           </div>
         )}
       </Dropzone>
 
-      {!!files?.length && files?.map((file: File, index: number) => <FileCard key={index} file={file} onRemove={() => onRemove(index)} />)}
+      {!!files?.length &&
+        files?.map((file: File, index: number) => (
+          <FileCard key={index} file={file} onRemove={() => onRemove(index)} />
+        ))}
     </div>
   )
 }
 
 function FileCard({ file, onRemove }: FileCardProps) {
+  const [isDownloading, setIsDownloading] = useState(false)
+
+  const handleDownload = async () => {
+    if (!isFileWithPreview(file)) return
+
+    setIsDownloading(true)
+    try {
+      const response = await fetch(file.preview)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+
+      const link = document.createElement('a')
+      link.href = url
+      link.download = file.name
+      document.body.appendChild(link)
+      link.click()
+
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Download failed', error)
+      window.open(file.preview, '_blank')
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   return (
     <div className="dropzone-previews mt-3">
-      <Card className="mt-1 mb-0 border-dashed border">
+      <Card className="mt-1 mb-0 border shadow-none bg-light">
         <div className="p-2">
           <Row className="align-items-center">
-            <Col xs="auto">{isFileWithPreview(file) && <FilePreview file={file} />}</Col>
-            <Col className="ps-0">
-              <Link to="" className="fw-semibold">
-                {file.name}
-              </Link>
-              <p className="mb-0 text-muted">{formatBytes(file.size)}</p>
-            </Col>
             <Col xs="auto">
-              <Button variant="link" size="lg" className="text-danger" onClick={onRemove}>
-                <TbX />
+              {isFileWithPreview(file) && <FilePreview file={file} />}
+            </Col>
+            <Col className="ps-0 overflow-hidden">
+              <div className="fw-semibold text-truncate small">{file.name}</div>
+              <p className="mb-0 text-muted fs-xs">
+                {file.size > 0 ? formatBytes(file.size) : 'Cloud File'}
+              </p>
+            </Col>
+            <Col xs="auto" className="d-flex gap-1">
+              {isFileWithPreview(file) && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="p-1 text-info"
+                  onClick={handleDownload}
+                  disabled={isDownloading}
+                  title="Download"
+                >
+                  {isDownloading ? (
+                    <Spinner animation="border" size="sm" />
+                  ) : (
+                    <TbDownload size={18} />
+                  )}
+                </Button>
+              )}
+              <Button
+                variant="link"
+                size="sm"
+                className="p-1 text-danger"
+                onClick={onRemove}
+                title="Remove"
+              >
+                <TbX size={18} />
               </Button>
             </Col>
           </Row>
@@ -178,14 +245,30 @@ function FileCard({ file, onRemove }: FileCardProps) {
 }
 
 function FilePreview({ file }: FilePreviewProps) {
-  if (file.type.startsWith('image/')) {
-    return <img src={file.preview} alt={file.name} width={32} height={32} loading="lazy" className="avatar-sm rounded bg-light" />
+  // Check MIME type or extension
+  const isImage =
+    file.type?.startsWith('image/') ||
+    /\.(jpg|jpeg|png|webp|gif)$/i.test(file.name)
+
+  if (isImage) {
+    return (
+      <img
+        src={file.preview}
+        alt={file.name}
+        width={32}
+        height={32}
+        className="avatar-sm rounded bg-white border object-fit-cover"
+      />
+    )
   }
 
   return (
-    <>
+    <div
+      className="avatar-sm rounded bg-white border d-flex align-items-center justify-content-center"
+      style={{ width: '32px', height: '32px' }}
+    >
       <FileExtensionWithPreview extension={file.name.split('.').pop() ?? ''} />
-    </>
+    </div>
   )
 }
 

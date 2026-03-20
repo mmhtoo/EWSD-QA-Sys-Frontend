@@ -12,10 +12,10 @@ interface CrudState<T> {
   error: string | null
 
   // CRUD
-  fetchAll: () => Promise<void>
+  fetchAll: (params?: string) => Promise<void>
   fetchById: (id: string | number) => Promise<void>
-  create: () => Promise<void>
-  update: (id: string | number) => Promise<void>
+  create: (params?: string) => Promise<void>
+  update: (id: string | number, params?: string) => Promise<void>
   remove: (id: string | number) => Promise<void>
   fetchRefreshToken: () => Promise<void>
 
@@ -42,10 +42,10 @@ export const createCrudStore = <T extends { id?: string | number }>(
 
     // ================= CRUD =================
 
-    fetchAll: async () => {
+    fetchAll: async (params = '') => {
       set({ isLoading: true, error: null })
       try {
-        const { data } = await axios.get(endpoint)
+        const { data } = await axios.get(`${endpoint}${params}`)
         set({
           items: data?.data?.current_page === 1 ? data?.data?.data : data?.data,
           isLoading: false,
@@ -71,10 +71,10 @@ export const createCrudStore = <T extends { id?: string | number }>(
       }
     },
 
-    create: async () => {
+    create: async (params = '') => {
       set({ isLoading: true, error: null })
       try {
-        const { data } = await axios.post(endpoint, get().payload)
+        const { data } = await axios.post(`${endpoint}${params}`, get().payload)
         set((state) => ({
           items: [...state.items, data],
           isLoading: false,
@@ -90,10 +90,13 @@ export const createCrudStore = <T extends { id?: string | number }>(
       }
     },
 
-    update: async (id) => {
+    update: async (id, params = '') => {
       set({ isLoading: true, error: null })
       try {
-        const { data } = await axios.put(`${endpoint}/${id}`, get().payload)
+        const { data } = await axios.patch(
+          `${endpoint}/${id}${params}`,
+          get().payload,
+        )
 
         set((state) => ({
           items: state.items.map((item) => (item.id === id ? data : item)),
