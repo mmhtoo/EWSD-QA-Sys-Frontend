@@ -44,7 +44,6 @@ export const ContentReportListPage = () => {
     useReportStore()
 
   const [activeReport, setActiveReport] = useState<any | null>(null)
-  console.log('🚀 ~ ContentReportListPage ~ activeReport:', activeReport)
 
   // Modal Visibility States
   const [showDetailModal, setShowDetailModal] = useState(false)
