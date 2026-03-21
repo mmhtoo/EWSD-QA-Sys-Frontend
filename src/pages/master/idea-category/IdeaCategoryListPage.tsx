@@ -35,8 +35,6 @@ const ideaCategoryFormSchema = z.object({
 
 type IdeaCategoryFormValues = z.infer<typeof ideaCategoryFormSchema>
 
-const usedCategoryIds = new Set([1, 2])
-
 const columnHelper = createColumnHelper<IdeaCategory>()
 
 export const IdeaCategoryListPage = () => {
@@ -82,7 +80,6 @@ export const IdeaCategoryListPage = () => {
         id: 'actions',
         header: 'Actions',
         cell: ({ row }: any) => {
-          const isUsed = usedCategoryIds.has(Number(row.original.id))
           return (
             <div className="d-flex gap-1 align-items-center">
               <Button
@@ -115,7 +112,7 @@ export const IdeaCategoryListPage = () => {
                 variant="danger"
                 size="sm"
                 className="btn-icon rounded-circle"
-                disabled={isUsed}
+                disabled={row.original.is_in_use}
                 onClick={() => {
                   setActiveCategory(row.original)
                   setShowDeleteModal(true)
@@ -123,7 +120,7 @@ export const IdeaCategoryListPage = () => {
               >
                 <TbTrash className="fs-lg" />
               </Button>
-              {isUsed && (
+              {row.original.is_in_use && (
                 <Badge bg="secondary-subtle" className="text-secondary">
                   In use
                 </Badge>

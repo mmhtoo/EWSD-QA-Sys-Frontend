@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { createColumnHelper } from '@tanstack/react-table'
 import { useMemo, useState, useEffect } from 'react'
 import {
+  Badge,
   Button,
   Container,
   Form,
@@ -79,7 +80,7 @@ export const PermissionListPage = () => {
         id: 'actions',
         header: 'Actions',
         cell: ({ row }: any) => (
-          <div className="d-flex gap-1">
+          <div className="d-flex gap-1 align-items-center">
             <Button
               variant="light"
               size="sm"
@@ -110,6 +111,7 @@ export const PermissionListPage = () => {
               variant="danger"
               size="sm"
               className="btn-icon rounded-circle"
+              disabled={row.original.is_in_use}
               onClick={() => {
                 setActivePermission(row.original)
                 setShowDeleteModal(true)
@@ -117,6 +119,11 @@ export const PermissionListPage = () => {
             >
               <TbTrash className="fs-lg" />
             </Button>
+            {row.original.is_in_use && (
+              <Badge bg="secondary-subtle" className="text-secondary">
+                In use
+              </Badge>
+            )}
           </div>
         ),
       },

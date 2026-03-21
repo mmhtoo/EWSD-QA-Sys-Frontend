@@ -14,6 +14,7 @@ import {
 import { LuHousePlug, LuShieldAlert, LuSparkles } from 'react-icons/lu'
 
 type UserDropdownItemType = {
+  id?: string
   label?: string
   icon?: IconType
   url?: string
@@ -31,6 +32,7 @@ export const userDropdownItems: UserDropdownItemType[] = [
     isDivider: true,
   },
   {
+    id: 'logout-btn',
     label: 'Log Out',
     icon: TbLogout2,
     url: AppRoutes.LOGIN.fullPath,
@@ -59,12 +61,18 @@ export const menuItems: MenuItemType[] = [
     icon: LuSparkles,
     url: AppRoutes.IDEA_LIST.fullPath,
   },
-  { key: 'users-section', label: 'Users', isTitle: true },
+  {
+    key: 'users-section',
+    label: 'Users',
+    isTitle: true,
+    permission: ['user.view'],
+  },
   {
     key: 'users',
     label: 'Users',
     icon: TbUserCircle,
     url: AppRoutes.USER_LIST.fullPath,
+    permission: ['user.view'],
   },
   { key: 'reports-section', label: 'Reports', isTitle: true },
   {

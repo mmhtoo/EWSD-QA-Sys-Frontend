@@ -12,11 +12,12 @@ interface CrudState<T> {
   error: string | null
 
   // CRUD
-  fetchAll: () => Promise<void>
+  fetchAll: (params?: string) => Promise<void>
   fetchById: (id: string | number) => Promise<void>
-  create: () => Promise<void>
-  update: (id: string | number) => Promise<void>
+  create: (params?: string) => Promise<void>
+  update: (id: string | number, params?: string) => Promise<void>
   remove: (id: string | number) => Promise<void>
+  fetchRefreshToken: () => Promise<void>
 
   // Form helpers
   setFormValues: (values: Partial<T>) => void
@@ -41,10 +42,10 @@ export const createCrudStore = <T extends { id?: string | number }>(
 
     // ================= CRUD =================
 
-    fetchAll: async () => {
+    fetchAll: async (params = '') => {
       set({ isLoading: true, error: null })
       try {
-        const { data } = await axios.get(endpoint)
+        const { data } = await axios.get(`${endpoint}${params}`)
         set({
           items: data?.data?.current_page === 1 ? data?.data?.data : data?.data,
           isLoading: false,
@@ -70,10 +71,10 @@ export const createCrudStore = <T extends { id?: string | number }>(
       }
     },
 
-    create: async () => {
+    create: async (params = '') => {
       set({ isLoading: true, error: null })
       try {
-        const { data } = await axios.post(endpoint, get().payload)
+        const { data } = await axios.post(`${endpoint}${params}`, get().payload)
         set((state) => ({
           items: [...state.items, data],
           isLoading: false,
@@ -89,10 +90,13 @@ export const createCrudStore = <T extends { id?: string | number }>(
       }
     },
 
-    update: async (id) => {
+    update: async (id, params = '') => {
       set({ isLoading: true, error: null })
       try {
-        const { data } = await axios.patch(`${endpoint}/${id}`, get().payload)
+        const { data } = await axios.patch(
+          `${endpoint}/${id}${params}`,
+          get().payload,
+        )
 
         set((state) => ({
           items: state.items.map((item) => (item.id === id ? data : item)),
@@ -119,6 +123,38 @@ export const createCrudStore = <T extends { id?: string | number }>(
           isLoading: false,
         }))
         toast.success('Success')
+      } catch (err: any) {
+        toast.error('Something went wrong')
+        set({
+          error: err?.response?.data?.message || err.message,
+          isLoading: false,
+        })
+      }
+    },
+
+    fetchRefreshToken: async () => {
+      set({ isLoading: true, error: null })
+
+      try {
+        const refresh_token = JSON.parse(
+          localStorage.getItem('token')!,
+        )?.refresh_token
+
+        const res = await axios.post('/auth/refresh-token', { refresh_token })
+
+        const oldStorage = JSON.parse(localStorage.getItem('token')!)
+
+        localStorage.setItem(
+          'token',
+          JSON.stringify({
+            ...oldStorage,
+            access_token: res.data.access_token,
+            refresh_token: res.data.refresh_token,
+          }),
+        )
+        set({
+          isLoading: false,
+        })
       } catch (err: any) {
         toast.error('Something went wrong')
         set({

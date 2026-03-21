@@ -19,7 +19,7 @@ export interface User extends BaseMetadata {
   email: string
   password_hash: string
   position?: string
-  profile_image_url?: string
+  profile_url?: string
 }
 
 export interface Role extends BaseMetadata {
@@ -56,11 +56,15 @@ export interface AcademicYear extends BaseMetadata {
 }
 
 export interface Idea extends BaseMetadata {
+  category?: {
+    id: number
+    name: string
+  }
   user_id: number
   academic_year_id: number
   title: string
   content: string
-  file_image_url?: string
+  file_url?: string
   is_anonymous: boolean
 }
 
@@ -107,6 +111,7 @@ export interface Report extends BaseMetadata {
   target_type: 'idea' | 'comment' | 'user'
   reason_details: string
   status: 'pending' | 'resolved' | 'dismissed'
+  category: { id: number; name: string }[]
 }
 
 /**
