@@ -1,6 +1,8 @@
+'use client'
+
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createColumnHelper } from '@tanstack/react-table'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import {
   Button,
   Container,
@@ -21,6 +23,9 @@ import EntityFormModal from '@/components/common/EntityFormModal'
 import SearchFilter from '@/components/common/SearchFilter'
 import DeleteConfirmationModal from '@/components/table/DeleteConfirmationModal'
 import type { ReportCategory } from '@/types/entity'
+import { useReportCategoryStore } from './store'
+import ApiHandlingProvider from '@/utils/ApiHandleProvider'
+import TblSkeletonLoading from '@/components/TblSkeletonLoading'
 
 const reportCategoryFormSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -29,39 +34,22 @@ const reportCategoryFormSchema = z.object({
 
 type ReportCategoryFormValues = z.infer<typeof reportCategoryFormSchema>
 
-const initialCategories: ReportCategory[] = [
-  {
-    id: 1,
-    name: 'Harassment',
-    description: 'Harassment or hate speech',
-    created_at: new Date('2025-09-01'),
-  },
-  {
-    id: 2,
-    name: 'Spam',
-    description: 'Irrelevant or repetitive content',
-    created_at: new Date('2025-09-01'),
-  },
-  {
-    id: 3,
-    name: 'Inappropriate',
-    description: 'Inappropriate language or content',
-    created_at: new Date('2025-09-01'),
-  },
-]
-
 const columnHelper = createColumnHelper<ReportCategory>()
 
 export const ReportCategoryListPage = () => {
-  const [categories, setCategories] = useState<ReportCategory[]>(() => [
-    ...initialCategories,
-  ])
+  const { items, fetchAll, create, update, remove, setPayload, isLoading } =
+    useReportCategoryStore()
+
   const [showFormModal, setShowFormModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [activeCategory, setActiveCategory] = useState<ReportCategory | null>(
     null,
   )
+
+  useEffect(() => {
+    fetchAll()
+  }, [fetchAll])
 
   const {
     register,
@@ -82,12 +70,15 @@ export const ReportCategoryListPage = () => {
       }),
       columnHelper.accessor('created_at', {
         header: 'Created',
-        cell: ({ row }) => row.original.created_at.toLocaleDateString(),
+        cell: ({ row }) => {
+          const date = row.original.created_at
+          return date ? new Date(date).toLocaleDateString() : '—'
+        },
       }),
       {
         id: 'actions',
         header: 'Actions',
-        cell: ({ row }: any) => (
+        cell: ({ row }: { row: any }) => (
           <div className="d-flex gap-1 align-items-center">
             <Button
               variant="light"
@@ -133,44 +124,27 @@ export const ReportCategoryListPage = () => {
     [reset],
   )
 
-  const submitForm = handleSubmit((data) => {
-    if (activeCategory) {
-      setCategories((prev) =>
-        prev.map((item) =>
-          item.id === activeCategory.id
-            ? {
-                ...item,
-                name: data.name,
-                description: data.description,
-                updated_at: new Date(),
-              }
-            : item,
-        ),
-      )
+  const submitForm = handleSubmit(async (data) => {
+    setPayload(data)
+
+    if (activeCategory?.id) {
+      await update(activeCategory.id)
     } else {
-      setCategories((prev) => [
-        {
-          id: Date.now(),
-          name: data.name,
-          description: data.description,
-          created_at: new Date(),
-        },
-        ...prev,
-      ])
+      await create()
     }
 
     reset({ name: '', description: '' })
     setShowFormModal(false)
     setActiveCategory(null)
+    fetchAll()
   })
 
-  const handleDelete = () => {
-    if (!activeCategory) return
-    setCategories((prev) =>
-      prev.filter((item) => item.id !== activeCategory.id),
-    )
+  const handleDelete = async () => {
+    if (!activeCategory?.id) return
+    await remove(activeCategory.id)
     setShowDeleteModal(false)
     setActiveCategory(null)
+    fetchAll()
   }
 
   return (
@@ -191,19 +165,24 @@ export const ReportCategoryListPage = () => {
           </Button>
         }
       >
-        <CommonDataTable
-          title="Report Categories"
-          data={categories}
-          columns={columns}
-          itemsName="categories"
-          renderHeader={({ globalFilter, setGlobalFilter }) => (
-            <SearchFilter
-              value={globalFilter}
-              onChange={setGlobalFilter}
-              placeholder="Search categories..."
-            />
-          )}
-        />
+        <ApiHandlingProvider
+          apiCalls={[isLoading]}
+          loadingComponent={<TblSkeletonLoading />}
+        >
+          <CommonDataTable
+            title="Report Categories"
+            data={items}
+            columns={columns}
+            itemsName="categories"
+            renderHeader={({ globalFilter, setGlobalFilter }) => (
+              <SearchFilter
+                value={globalFilter}
+                onChange={setGlobalFilter}
+                placeholder="Search categories..."
+              />
+            )}
+          />
+        </ApiHandlingProvider>
       </DashboardPage>
 
       <EntityFormModal
@@ -251,7 +230,9 @@ export const ReportCategoryListPage = () => {
               },
               {
                 label: 'Created',
-                value: activeCategory.created_at.toLocaleDateString(),
+                value: activeCategory.created_at
+                  ? new Date(activeCategory.created_at).toLocaleDateString()
+                  : '—',
               },
             ]}
           />

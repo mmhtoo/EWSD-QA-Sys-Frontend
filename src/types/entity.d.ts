@@ -56,6 +56,10 @@ export interface AcademicYear extends BaseMetadata {
 }
 
 export interface Idea extends BaseMetadata {
+  category?: {
+    id: number
+    name: string
+  }
   user_id: number
   academic_year_id: number
   title: string
@@ -107,6 +111,7 @@ export interface Report extends BaseMetadata {
   target_type: 'idea' | 'comment' | 'user'
   reason_details: string
   status: 'pending' | 'resolved' | 'dismissed'
+  category: { id: number; name: string }[]
 }
 
 /**
