@@ -1,0 +1,842 @@
+import type {
+  Comment,
+  Department,
+  Idea,
+  IdeaCategory,
+  IdeaHasCategory,
+  Reaction,
+  Report,
+  ReportCategory,
+  ReportHasCategory,
+  User,
+} from '@/types/entity'
+
+export const MOCK_DEPARTMENTS: Department[] = [
+  {
+    id: 1,
+    name: 'Computer Science',
+    description: 'School of Computer Science',
+    created_at: new Date('2025-09-01'),
+  },
+  {
+    id: 2,
+    name: 'Business School',
+    description: 'School of Business',
+    created_at: new Date('2025-09-01'),
+  },
+  {
+    id: 3,
+    name: 'Engineering',
+    description: 'School of Engineering',
+    created_at: new Date('2025-09-01'),
+  },
+  {
+    id: 4,
+    name: 'Student Affairs',
+    description: 'Student support and services',
+    created_at: new Date('2025-09-01'),
+  },
+]
+
+export const MOCK_USERS: User[] = [
+  {
+    id: 11,
+    role_id: 1,
+    department_id: 1,
+    name: 'Aye Chan',
+    email: 'aye.chan@example.edu',
+    password_hash: 'hashed',
+    created_at: new Date('2026-01-02'),
+  },
+  {
+    id: 12,
+    role_id: 1,
+    department_id: 1,
+    name: 'Ko Min',
+    email: 'ko.min@example.edu',
+    password_hash: 'hashed',
+    created_at: new Date('2026-01-04'),
+  },
+  {
+    id: 21,
+    role_id: 1,
+    department_id: 2,
+    name: 'Su Kyi',
+    email: 'su.kyi@example.edu',
+    password_hash: 'hashed',
+    created_at: new Date('2026-01-09'),
+  },
+  {
+    id: 22,
+    role_id: 1,
+    department_id: 2,
+    name: 'Nyi Nyi',
+    email: 'nyi.nyi@example.edu',
+    password_hash: 'hashed',
+    created_at: new Date('2026-01-15'),
+  },
+  {
+    id: 31,
+    role_id: 1,
+    department_id: 3,
+    name: 'Aung Phyo',
+    email: 'aung.phyo@example.edu',
+    password_hash: 'hashed',
+    created_at: new Date('2026-02-01'),
+  },
+  {
+    id: 32,
+    role_id: 1,
+    department_id: 3,
+    name: 'Thiri Win',
+    email: 'thiri.win@example.edu',
+    password_hash: 'hashed',
+    created_at: new Date('2026-02-10'),
+  },
+  {
+    id: 41,
+    role_id: 1,
+    department_id: 4,
+    name: 'May Zin',
+    email: 'may.zin@example.edu',
+    password_hash: 'hashed',
+    created_at: new Date('2026-02-16'),
+  },
+  {
+    id: 42,
+    role_id: 1,
+    department_id: 4,
+    name: 'Kyaw Thu',
+    email: 'kyaw.thu@example.edu',
+    password_hash: 'hashed',
+    created_at: new Date('2026-03-05'),
+  },
+]
+
+export const MOCK_IDEA_CATEGORIES: IdeaCategory[] = [
+  {
+    id: 1,
+    name: 'Teaching & Learning',
+    description: 'Lecture and classroom improvements',
+    created_at: new Date('2025-09-01'),
+  },
+  {
+    id: 2,
+    name: 'Campus Services',
+    description: 'Facilities and service quality',
+    created_at: new Date('2025-09-01'),
+  },
+  {
+    id: 3,
+    name: 'Student Experience',
+    description: 'Student life and wellbeing',
+    created_at: new Date('2025-09-01'),
+  },
+  {
+    id: 4,
+    name: 'Research & Innovation',
+    description: 'Research and innovation ideas',
+    created_at: new Date('2025-09-01'),
+  },
+  {
+    id: 5,
+    name: 'Staff Welfare',
+    description: 'Staff support and work culture',
+    created_at: new Date('2025-09-01'),
+  },
+]
+
+export const MOCK_IDEAS: Idea[] = [
+  {
+    id: 501,
+    user_id: 11,
+    academic_year_id: 1,
+    title: 'Peer-led coding lab sessions',
+    content: 'Run weekly peer-assisted coding labs for first-year students.',
+    is_anonymous: false,
+    created_at: new Date('2026-01-05'),
+  },
+  {
+    id: 502,
+    user_id: 12,
+    academic_year_id: 1,
+    title: 'Add lecture recap videos',
+    content: 'Provide short recap videos for every major lecture topic.',
+    is_anonymous: true,
+    created_at: new Date('2026-01-12'),
+  },
+  {
+    id: 503,
+    user_id: 21,
+    academic_year_id: 1,
+    title: 'Queue display for admin office',
+    content: 'Install a queue display to reduce waiting confusion.',
+    is_anonymous: false,
+    created_at: new Date('2026-01-20'),
+  },
+  {
+    id: 504,
+    user_id: 22,
+    academic_year_id: 1,
+    title: 'Mentorship coffee sessions',
+    content: 'Set up monthly mentor sessions for new staff and students.',
+    is_anonymous: false,
+    created_at: new Date('2026-02-02'),
+  },
+  {
+    id: 505,
+    user_id: 31,
+    academic_year_id: 1,
+    title: 'Prototype mini grant program',
+    content: 'Offer seed grants for cross-department prototypes.',
+    is_anonymous: false,
+    created_at: new Date('2026-02-10'),
+  },
+  {
+    id: 506,
+    user_id: 32,
+    academic_year_id: 1,
+    title: 'Smart maintenance ticketing',
+    content: 'Prioritize maintenance tickets by urgency and impact.',
+    is_anonymous: true,
+    created_at: new Date('2026-02-18'),
+  },
+  {
+    id: 507,
+    user_id: 41,
+    academic_year_id: 1,
+    title: 'Monthly wellness circles',
+    content: 'Host wellness circles with counselors and peer mentors.',
+    is_anonymous: false,
+    created_at: new Date('2026-02-25'),
+  },
+  {
+    id: 508,
+    user_id: 42,
+    academic_year_id: 1,
+    title: 'Longer library service hours',
+    content: 'Extend library support hours during exam weeks.',
+    is_anonymous: false,
+    created_at: new Date('2026-03-03'),
+  },
+  {
+    id: 509,
+    user_id: 11,
+    academic_year_id: 1,
+    title: 'Teaching peer review circles',
+    content: 'Create peer circles to improve lesson delivery quality.',
+    is_anonymous: true,
+    created_at: new Date('2026-03-07'),
+  },
+  {
+    id: 510,
+    user_id: 21,
+    academic_year_id: 1,
+    title: 'Student service chatbot',
+    content: 'Deploy chatbot for common student service questions.',
+    is_anonymous: false,
+    created_at: new Date('2026-03-10'),
+  },
+  {
+    id: 511,
+    user_id: 31,
+    academic_year_id: 1,
+    title: 'Industry research showcase',
+    content: 'Quarterly showcase for applied industry research projects.',
+    is_anonymous: false,
+    created_at: new Date('2026-03-12'),
+  },
+  {
+    id: 512,
+    user_id: 42,
+    academic_year_id: 1,
+    title: 'Orientation support volunteers',
+    content: 'Recruit volunteers for first-week orientation support desks.',
+    is_anonymous: false,
+    created_at: new Date('2026-03-15'),
+  },
+]
+
+export const MOCK_COMMENTS: Comment[] = [
+  {
+    id: 8001,
+    user_id: 21,
+    idea_id: 501,
+    content: 'This would really help first-year onboarding.',
+    is_anonymous: false,
+    created_at: new Date('2026-01-08'),
+  },
+  {
+    id: 8002,
+    user_id: 22,
+    idea_id: 501,
+    content: 'Please include peer mentor training too.',
+    is_anonymous: true,
+    created_at: new Date('2026-01-09'),
+  },
+  {
+    id: 8003,
+    user_id: 31,
+    idea_id: 503,
+    content: 'Could we also notify queue status by mobile?',
+    is_anonymous: false,
+    created_at: new Date('2026-01-24'),
+  },
+  {
+    id: 8004,
+    user_id: 41,
+    idea_id: 504,
+    content: 'Monthly sessions are enough for start.',
+    is_anonymous: false,
+    created_at: new Date('2026-02-05'),
+  },
+  {
+    id: 8005,
+    user_id: 42,
+    idea_id: 505,
+    content: 'Great chance to support interdisciplinary projects.',
+    is_anonymous: false,
+    created_at: new Date('2026-02-12'),
+  },
+  {
+    id: 8006,
+    user_id: 12,
+    idea_id: 506,
+    content: 'Urgency tags will make maintenance clearer.',
+    is_anonymous: true,
+    created_at: new Date('2026-02-20'),
+  },
+  {
+    id: 8007,
+    user_id: 32,
+    idea_id: 507,
+    content: 'Can we provide a hybrid online option?',
+    is_anonymous: false,
+    created_at: new Date('2026-02-26'),
+  },
+  {
+    id: 8008,
+    user_id: 11,
+    idea_id: 508,
+    content: 'Extended hours are crucial during finals.',
+    is_anonymous: false,
+    created_at: new Date('2026-03-03'),
+  },
+  {
+    id: 8009,
+    user_id: 22,
+    idea_id: 509,
+    content: 'Peer circles should include observation checklist.',
+    is_anonymous: true,
+    created_at: new Date('2026-03-08'),
+  },
+  {
+    id: 8010,
+    user_id: 31,
+    idea_id: 510,
+    content: 'Bot can reduce routine office workload.',
+    is_anonymous: false,
+    created_at: new Date('2026-03-11'),
+  },
+  {
+    id: 8011,
+    user_id: 41,
+    idea_id: 511,
+    content: 'Let students join the showcase as assistants.',
+    is_anonymous: false,
+    created_at: new Date('2026-03-13'),
+  },
+  {
+    id: 8012,
+    user_id: 12,
+    idea_id: 511,
+    content: 'Could be linked with internship partners.',
+    is_anonymous: true,
+    created_at: new Date('2026-03-14'),
+  },
+]
+
+export const MOCK_REACTIONS: Reaction[] = [
+  {
+    id: 9001,
+    user_id: 21,
+    idea_id: 501,
+    reaction_type: 'upvote',
+    created_at: new Date('2026-01-06'),
+  },
+  {
+    id: 9002,
+    user_id: 22,
+    idea_id: 501,
+    reaction_type: 'upvote',
+    created_at: new Date('2026-01-07'),
+  },
+  {
+    id: 9003,
+    user_id: 31,
+    idea_id: 501,
+    reaction_type: 'upvote',
+    created_at: new Date('2026-01-08'),
+  },
+  {
+    id: 9004,
+    user_id: 32,
+    idea_id: 502,
+    reaction_type: 'upvote',
+    created_at: new Date('2026-01-13'),
+  },
+  {
+    id: 9005,
+    user_id: 41,
+    idea_id: 503,
+    reaction_type: 'upvote',
+    created_at: new Date('2026-01-21'),
+  },
+  {
+    id: 9006,
+    user_id: 42,
+    idea_id: 503,
+    reaction_type: 'downvote',
+    created_at: new Date('2026-01-22'),
+  },
+  {
+    id: 9007,
+    user_id: 11,
+    idea_id: 504,
+    reaction_type: 'upvote',
+    created_at: new Date('2026-02-03'),
+  },
+  {
+    id: 9008,
+    user_id: 12,
+    idea_id: 504,
+    reaction_type: 'upvote',
+    created_at: new Date('2026-02-04'),
+  },
+  {
+    id: 9009,
+    user_id: 21,
+    idea_id: 505,
+    reaction_type: 'upvote',
+    created_at: new Date('2026-02-11'),
+  },
+  {
+    id: 9010,
+    user_id: 22,
+    idea_id: 505,
+    reaction_type: 'upvote',
+    created_at: new Date('2026-02-12'),
+  },
+  {
+    id: 9011,
+    user_id: 31,
+    idea_id: 506,
+    reaction_type: 'downvote',
+    created_at: new Date('2026-02-19'),
+  },
+  {
+    id: 9012,
+    user_id: 32,
+    idea_id: 507,
+    reaction_type: 'upvote',
+    created_at: new Date('2026-02-26'),
+  },
+  {
+    id: 9013,
+    user_id: 41,
+    idea_id: 508,
+    reaction_type: 'upvote',
+    created_at: new Date('2026-03-04'),
+  },
+  {
+    id: 9014,
+    user_id: 42,
+    idea_id: 508,
+    reaction_type: 'upvote',
+    created_at: new Date('2026-03-05'),
+  },
+  {
+    id: 9015,
+    user_id: 11,
+    idea_id: 509,
+    reaction_type: 'upvote',
+    created_at: new Date('2026-03-08'),
+  },
+  {
+    id: 9016,
+    user_id: 12,
+    idea_id: 510,
+    reaction_type: 'upvote',
+    created_at: new Date('2026-03-11'),
+  },
+  {
+    id: 9017,
+    user_id: 21,
+    idea_id: 511,
+    reaction_type: 'upvote',
+    created_at: new Date('2026-03-13'),
+  },
+  {
+    id: 9018,
+    user_id: 22,
+    idea_id: 511,
+    reaction_type: 'upvote',
+    created_at: new Date('2026-03-14'),
+  },
+]
+
+export const MOCK_IDEA_HAS_CATEGORIES: IdeaHasCategory[] = [
+  {
+    id: 1,
+    idea_id: 501,
+    idea_category_id: 1,
+    created_at: new Date('2026-01-05'),
+  },
+  {
+    id: 2,
+    idea_id: 501,
+    idea_category_id: 4,
+    created_at: new Date('2026-01-05'),
+  },
+  {
+    id: 3,
+    idea_id: 502,
+    idea_category_id: 1,
+    created_at: new Date('2026-01-12'),
+  },
+  {
+    id: 4,
+    idea_id: 503,
+    idea_category_id: 2,
+    created_at: new Date('2026-01-20'),
+  },
+  {
+    id: 5,
+    idea_id: 504,
+    idea_category_id: 3,
+    created_at: new Date('2026-02-02'),
+  },
+  {
+    id: 6,
+    idea_id: 504,
+    idea_category_id: 5,
+    created_at: new Date('2026-02-02'),
+  },
+  {
+    id: 7,
+    idea_id: 505,
+    idea_category_id: 4,
+    created_at: new Date('2026-02-10'),
+  },
+  {
+    id: 8,
+    idea_id: 506,
+    idea_category_id: 2,
+    created_at: new Date('2026-02-18'),
+  },
+  {
+    id: 9,
+    idea_id: 506,
+    idea_category_id: 4,
+    created_at: new Date('2026-02-18'),
+  },
+  {
+    id: 10,
+    idea_id: 507,
+    idea_category_id: 3,
+    created_at: new Date('2026-02-25'),
+  },
+  {
+    id: 11,
+    idea_id: 508,
+    idea_category_id: 2,
+    created_at: new Date('2026-03-03'),
+  },
+  {
+    id: 12,
+    idea_id: 508,
+    idea_category_id: 3,
+    created_at: new Date('2026-03-03'),
+  },
+  {
+    id: 13,
+    idea_id: 509,
+    idea_category_id: 1,
+    created_at: new Date('2026-03-07'),
+  },
+  {
+    id: 14,
+    idea_id: 509,
+    idea_category_id: 5,
+    created_at: new Date('2026-03-07'),
+  },
+  {
+    id: 15,
+    idea_id: 510,
+    idea_category_id: 2,
+    created_at: new Date('2026-03-10'),
+  },
+  {
+    id: 16,
+    idea_id: 511,
+    idea_category_id: 1,
+    created_at: new Date('2026-03-12'),
+  },
+  {
+    id: 17,
+    idea_id: 511,
+    idea_category_id: 4,
+    created_at: new Date('2026-03-12'),
+  },
+  {
+    id: 18,
+    idea_id: 512,
+    idea_category_id: 3,
+    created_at: new Date('2026-03-15'),
+  },
+]
+
+export const MOCK_REPORT_CATEGORIES: ReportCategory[] = [
+  {
+    id: 1,
+    name: 'Spam',
+    description: 'Repeated irrelevant content',
+    created_at: new Date('2025-09-01'),
+  },
+  {
+    id: 2,
+    name: 'Harassment',
+    description: 'Abusive or harassing behavior',
+    created_at: new Date('2025-09-01'),
+  },
+  {
+    id: 3,
+    name: 'Inappropriate Language',
+    description: 'Offensive or unacceptable wording',
+    created_at: new Date('2025-09-01'),
+  },
+  {
+    id: 4,
+    name: 'Data Privacy',
+    description: 'Potential personal data leakage',
+    created_at: new Date('2025-09-01'),
+  },
+  {
+    id: 5,
+    name: 'Misinformation',
+    description: 'False or misleading information',
+    created_at: new Date('2025-09-01'),
+  },
+]
+
+export const MOCK_REPORTS: Report[] = [
+  {
+    id: 701,
+    user_id: 22,
+    target_id: 501,
+    target_type: 'idea',
+    reason_details: 'Contains personal details.',
+    status: 'pending',
+    category: [],
+    created_at: new Date('2026-02-01'),
+  },
+  {
+    id: 702,
+    user_id: 31,
+    target_id: 9001,
+    target_type: 'comment',
+    reason_details: 'Looks like repeated ad links.',
+    status: 'resolved',
+    category: [],
+    created_at: new Date('2026-02-06'),
+  },
+  {
+    id: 703,
+    user_id: 42,
+    target_id: 503,
+    target_type: 'idea',
+    reason_details: 'Aggressive wording in message.',
+    status: 'pending',
+    category: [],
+    created_at: new Date('2026-02-11'),
+  },
+  {
+    id: 704,
+    user_id: 12,
+    target_id: 510,
+    target_type: 'idea',
+    reason_details: 'Unverified information shared as fact.',
+    status: 'dismissed',
+    category: [],
+    created_at: new Date('2026-02-19'),
+  },
+  {
+    id: 705,
+    user_id: 21,
+    target_id: 9010,
+    target_type: 'comment',
+    reason_details: 'Repeated promotional content.',
+    status: 'resolved',
+    category: [],
+    created_at: new Date('2026-03-01'),
+  },
+  {
+    id: 706,
+    user_id: 32,
+    target_id: 42,
+    target_type: 'user',
+    reason_details: 'Targeted harassing messages.',
+    status: 'pending',
+    category: [],
+    created_at: new Date('2026-03-05'),
+  },
+  {
+    id: 707,
+    user_id: 41,
+    target_id: 9022,
+    target_type: 'comment',
+    reason_details: 'Hostile and inappropriate language.',
+    status: 'pending',
+    category: [],
+    created_at: new Date('2026-03-09'),
+  },
+  {
+    id: 708,
+    user_id: 11,
+    target_id: 507,
+    target_type: 'idea',
+    reason_details: 'Sensitive personal information disclosed.',
+    status: 'resolved',
+    category: [],
+    created_at: new Date('2026-03-13'),
+  },
+  {
+    id: 709,
+    user_id: 22,
+    target_id: 9033,
+    target_type: 'comment',
+    reason_details: 'Misleading statements with offensive tone.',
+    status: 'dismissed',
+    category: [],
+    created_at: new Date('2026-03-16'),
+  },
+]
+
+export const MOCK_REPORT_HAS_CATEGORIES: ReportHasCategory[] = [
+  {
+    id: 1,
+    report_id: 701,
+    report_category_id: 4,
+    created_at: new Date('2026-02-01'),
+  },
+  {
+    id: 2,
+    report_id: 702,
+    report_category_id: 1,
+    created_at: new Date('2026-02-06'),
+  },
+  {
+    id: 3,
+    report_id: 703,
+    report_category_id: 2,
+    created_at: new Date('2026-02-11'),
+  },
+  {
+    id: 4,
+    report_id: 703,
+    report_category_id: 3,
+    created_at: new Date('2026-02-11'),
+  },
+  {
+    id: 5,
+    report_id: 704,
+    report_category_id: 5,
+    created_at: new Date('2026-02-19'),
+  },
+  {
+    id: 6,
+    report_id: 705,
+    report_category_id: 1,
+    created_at: new Date('2026-03-01'),
+  },
+  {
+    id: 7,
+    report_id: 706,
+    report_category_id: 2,
+    created_at: new Date('2026-03-05'),
+  },
+  {
+    id: 8,
+    report_id: 707,
+    report_category_id: 3,
+    created_at: new Date('2026-03-09'),
+  },
+  {
+    id: 9,
+    report_id: 708,
+    report_category_id: 4,
+    created_at: new Date('2026-03-13'),
+  },
+  {
+    id: 10,
+    report_id: 708,
+    report_category_id: 5,
+    created_at: new Date('2026-03-13'),
+  },
+  {
+    id: 11,
+    report_id: 709,
+    report_category_id: 1,
+    created_at: new Date('2026-03-16'),
+  },
+  {
+    id: 12,
+    report_id: 709,
+    report_category_id: 3,
+    created_at: new Date('2026-03-16'),
+  },
+]
+
+// ── Derived lookup maps ────────────────────────────────────────────────────────
+
+export const userById = new Map<number, User>(
+  MOCK_USERS.map((user) => [Number(user.id), user]),
+)
+
+export const departmentNameById = new Map<number, string>(
+  MOCK_DEPARTMENTS.map((department) => [
+    Number(department.id),
+    department.name,
+  ]),
+)
+
+export const ideaCategoryNameById = new Map<number, string>(
+  MOCK_IDEA_CATEGORIES.map((category) => [Number(category.id), category.name]),
+)
+
+export const reportCategoryNameById = new Map<number, string>(
+  MOCK_REPORT_CATEGORIES.map((category) => [
+    Number(category.id),
+    category.name,
+  ]),
+)
+
+export const ideaCategoryIdsByIdeaId = MOCK_IDEA_HAS_CATEGORIES.reduce(
+  (acc, item) => {
+    const current = acc.get(item.idea_id) ?? []
+    current.push(item.idea_category_id)
+    acc.set(item.idea_id, current)
+    return acc
+  },
+  new Map<number, number[]>(),
+)
+
+export const reportCategoryIdsByReportId = MOCK_REPORT_HAS_CATEGORIES.reduce(
+  (acc, item) => {
+    const current = acc.get(item.report_id) ?? []
+    current.push(item.report_category_id)
+    acc.set(item.report_id, current)
+    return acc
+  },
+  new Map<number, number[]>(),
+)
