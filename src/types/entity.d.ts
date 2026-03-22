@@ -56,6 +56,9 @@ export interface AcademicYear extends BaseMetadata {
 }
 
 export interface Idea extends BaseMetadata {
+  status?: string
+  user_info?: any
+  idea_category?: string
   category?: {
     id: number
     name: string

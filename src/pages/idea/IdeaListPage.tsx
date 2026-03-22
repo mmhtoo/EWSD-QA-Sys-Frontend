@@ -14,11 +14,22 @@ import {
   FormGroup,
   FormLabel,
   Row,
+  Spinner,
 } from 'react-bootstrap'
 import { useForm } from 'react-hook-form'
-import { LuTag, LuCalendar } from 'react-icons/lu'
-import { TbEdit, TbEye, TbPlus, TbTrash } from 'react-icons/tb'
+import { LuTag } from 'react-icons/lu'
+import {
+  TbEdit,
+  TbEye,
+  TbPlus,
+  TbTrash,
+  TbDownload,
+  TbArchive,
+} from 'react-icons/tb'
 import { z } from 'zod'
+import * as XLSX from 'xlsx'
+import JSZip from 'jszip'
+import { saveAs } from 'file-saver'
 
 import FileUploader from '@/components/FileUploader'
 import CommonDataTable from '@/components/common/CommonDataTable'
@@ -29,20 +40,19 @@ import EntityDetailModal from '@/components/common/EntityDetailModal'
 import EntityFormModal from '@/components/common/EntityFormModal'
 import SearchFilter from '@/components/common/SearchFilter'
 
-import { useIdeaSpecificStore, useIdeaStore } from './store'
+import { useIdeaSpecificStore, useIdeaStore, useReportStore } from './store'
 import { useIdeaCategoryStore } from '../master/idea-category/store'
 import { useAcademicYearStore } from '../master/academic-year/store'
+
 import ApiHandlingProvider from '@/utils/ApiHandleProvider'
 import TblSkeletonLoading from '@/components/TblSkeletonLoading'
 import axios from '@/lib/axios'
 import { getMimeType } from '@/utils'
 
-// Schema matches your Form requirements
 const ideaFormSchema = z.object({
   title: z.string().min(5, 'Title is required'),
   content: z.string().min(10, 'Content is required'),
   categoryId: z.string().min(1, 'Category is required'),
-  academicYearId: z.string().min(1, 'Academic Year is required'),
   isAnonymous: z.boolean().optional(),
   terms: z.literal(true, {
     errorMap: () => ({ message: 'You must accept the terms.' }),
@@ -50,12 +60,12 @@ const ideaFormSchema = z.object({
 })
 
 type IdeaFormValues = z.infer<typeof ideaFormSchema>
-
-// The column helper now uses the flat Idea type
 const columnHelper = createColumnHelper<any>()
 
 export const IdeaListPage = () => {
   const [isSubmitLoading, setIsSubmitLoading] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [zipProcessingId, setZipProcessingId] = useState<number | null>(null)
 
   const ideaStore = useMemo(() => useIdeaStore(), [])
 
@@ -68,7 +78,6 @@ export const IdeaListPage = () => {
     setPayload,
     fetchById,
     isLoading: isLoadingIdea,
-    activeItem,
   } = ideaStore()
 
   const {
@@ -76,12 +85,9 @@ export const IdeaListPage = () => {
     fetchAll: fetchCategories,
     isLoading: isLoadingCategories,
   } = useIdeaCategoryStore()
-  const {
-    items: academicYears,
-    fetchAll: fetchAcademicYears,
-    isLoading: isLoadingAcademicYear,
-  } = useAcademicYearStore()
 
+  const { items: academicYears, fetchAll: fetchAcademicYears } =
+    useAcademicYearStore()
   const { showFormModal, setShowFormModal } = useIdeaSpecificStore()
 
   const [showDetailModal, setShowDetailModal] = useState(false)
@@ -106,11 +112,131 @@ export const IdeaListPage = () => {
       title: '',
       content: '',
       categoryId: '',
-      academicYearId: '',
       isAnonymous: false,
       terms: true,
     },
   })
+
+  const handleDownloadZip = async (rowItem: any) => {
+    setZipProcessingId(rowItem.id)
+    const zip = new JSZip()
+
+    try {
+      const commentRes = await axios.get(`/ideas/${rowItem.id}/comments`)
+      const comments = commentRes.data?.data || []
+
+      const reportRes = await axios.get(`/reports`)
+      const rawReports = reportRes.data?.data || []
+      const reports = rawReports.filter(
+        (r: any) => Number(r.idea_id) === Number(rowItem.id),
+      )
+
+      const wb = XLSX.utils.book_new()
+
+      const ideaDetail = [
+        ['Field', 'Details'],
+        ['Title', rowItem.title],
+        ['Content', rowItem.content],
+        ['Category', rowItem.idea_category || 'N/A'],
+        [
+          'Author',
+          rowItem.is_annonymous ? 'Anonymous' : rowItem.user_info?.name,
+        ],
+        ['Status', rowItem.status || 'Active'],
+        ['Date', rowItem.created_at],
+      ]
+      const ws1 = XLSX.utils.aoa_to_sheet(ideaDetail)
+      XLSX.utils.book_append_sheet(wb, ws1, 'Idea Details')
+
+      const commentRows = comments.map((c: any) => ({
+        Author: c.is_anonymous ? 'Anonymous' : c.user_info?.name || 'Unknown',
+        Comment: c.content,
+        Date: c.created_at ? new Date(c.created_at).toLocaleString() : 'N/A',
+        Attachment: c.file_url ? 'File included' : 'None',
+      }))
+      const ws2 = XLSX.utils.json_to_sheet(
+        commentRows.length ? commentRows : [{ Message: 'No comments' }],
+      )
+      XLSX.utils.book_append_sheet(wb, ws2, 'Comments')
+
+      const reportRows = reports.map((r: any) => ({
+        Reporter: r.user_info?.name || 'Unknown',
+        Reason: r.reason,
+        Date: r.created_at ? new Date(r.created_at).toLocaleString() : 'N/A',
+      }))
+      const ws3 = XLSX.utils.json_to_sheet(
+        reportRows.length ? reportRows : [{ Message: 'No reports' }],
+      )
+      XLSX.utils.book_append_sheet(wb, ws3, 'Reporting')
+
+      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+      zip.file('idea_summary.xlsx', excelBuffer)
+
+      const filesToDownload = []
+      if (rowItem.file_url) {
+        filesToDownload.push({ url: rowItem.file_url, name: 'idea_main_doc' })
+      }
+
+      comments.forEach((c: any, index: number) => {
+        if (c.file_url) {
+          filesToDownload.push({
+            url: c.file_url,
+            name: `comment_${index + 1}_doc`,
+          })
+        }
+      })
+
+      await Promise.all(
+        filesToDownload.map(async (fileObj) => {
+          try {
+            const res = await fetch(fileObj.url)
+            if (!res.ok) throw new Error('Network response was not ok')
+            const blob = await res.blob()
+            const extension =
+              fileObj.url.split('.').pop()?.split(/\#|\?/)[0] || 'bin'
+            zip.file(`${fileObj.name}.${extension}`, blob)
+          } catch (e) {
+            console.error('File download failed:', fileObj.url, e)
+          }
+        }),
+      )
+
+      const content = await zip.generateAsync({ type: 'blob' })
+      saveAs(content, `Idea_${rowItem.id}_Package.zip`)
+    } catch (error) {
+      console.error('ZIP Error:', error)
+    } finally {
+      setZipProcessingId(null)
+    }
+  }
+
+  const handleExportExcel = () => {
+    setIsExporting(true)
+    try {
+      const dataToExport = items.map((item) => ({
+        ID: item.id,
+        Title: item.title,
+        Content: item.content,
+        Category: item.idea_category || 'N/A',
+        Author: item.is_anonymous
+          ? 'Anonymous'
+          : item.user_info?.name || 'Unknown',
+        Status: item.status || 'Active',
+        'Created At': item.created_at
+          ? new Date(item.created_at).toLocaleDateString()
+          : 'N/A',
+      }))
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Ideas')
+      XLSX.writeFile(
+        workbook,
+        `Ideas_Export_${new Date().toISOString().split('T')[0]}.xlsx`,
+      )
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   const columns = useMemo(
     () => [
@@ -130,16 +256,11 @@ export const IdeaListPage = () => {
       }),
       columnHelper.accessor('idea_category_id', {
         header: 'Category',
-        cell: ({ row }) => {
-          const cat = categories?.find(
-            (c) => c.id === row.original.idea_category,
-          )
-          return (
-            <Badge bg="info-subtle" className="text-info">
-              {row.original.idea_category || 'N/A'}
-            </Badge>
-          )
-        },
+        cell: ({ row }) => (
+          <Badge bg="info-subtle" className="text-info">
+            {row.original.idea_category || 'N/A'}
+          </Badge>
+        ),
       }),
       columnHelper.accessor('user_info', {
         header: 'Author',
@@ -159,6 +280,21 @@ export const IdeaListPage = () => {
             <Button
               variant="light"
               size="sm"
+              className="btn-icon rounded-circle text-primary"
+              onClick={() => handleDownloadZip(row.original)}
+              disabled={zipProcessingId === row.original.id}
+              title="Download ZIP"
+            >
+              {zipProcessingId === row.original.id ? (
+                <Spinner size="sm" animation="border" />
+              ) : (
+                <TbArchive size={18} />
+              )}
+            </Button>
+
+            <Button
+              variant="light"
+              size="sm"
               className="btn-icon rounded-circle"
               onClick={() => {
                 setActiveIdea(row.original)
@@ -173,36 +309,30 @@ export const IdeaListPage = () => {
               className="btn-icon rounded-circle"
               onClick={async () => {
                 await fetchById(row.original.id)
+                const latestItem =
+                  ideaStore.getState().activeItem || row.original
+                setActiveIdea(latestItem)
 
-                const latestItem = ideaStore.getState().activeItem
-
-                setActiveIdea(latestItem || row.original)
-
-                const itemToBind = latestItem || row.original
-
-                if (itemToBind?.file_url) {
-                  const existingFile = {
-                    //itemToBind.file_url.split('/').pop() ||
-                    name: 'Attachment',
-                    size: 0,
-                    type: getMimeType(itemToBind.file_url),
-                    preview: itemToBind.file_url,
-                    isExisting: true,
-                  }
-                  setUploadFiles([existingFile as any])
+                if (latestItem?.file_url) {
+                  setUploadFiles([
+                    {
+                      name: 'Attachment',
+                      type: getMimeType(latestItem.file_url),
+                      preview: latestItem.file_url,
+                      isExisting: true,
+                    } as any,
+                  ])
                 } else {
                   setUploadFiles([])
                 }
 
                 reset({
-                  title: itemToBind.title,
-                  content: itemToBind.content,
-                  categoryId: String(itemToBind.idea_category_id),
-                  academicYearId: String(itemToBind.academic_year_id),
-                  isAnonymous: !!itemToBind.is_annonymous,
+                  title: latestItem.title,
+                  content: latestItem.content,
+                  categoryId: String(latestItem.idea_category_id),
+                  isAnonymous: !!latestItem.is_annonymous,
                   terms: true,
                 })
-
                 setShowFormModal(true)
               }}
             >
@@ -223,33 +353,27 @@ export const IdeaListPage = () => {
         ),
       },
     ],
-    [categories, reset],
+    [categories, reset, fetchById, ideaStore, zipProcessingId],
   )
 
   const submitForm = handleSubmit(async (data) => {
     setIsSubmitLoading(true)
     try {
       let fileUrl = activeIdea?.file_url || ''
-
       if (uploadFiles && uploadFiles.length > 0) {
         const activeFile = uploadFiles[0] as any
-
         if (!activeFile.isExisting) {
           const formData = new FormData()
           formData.append('file', activeFile)
-
           const uploadRes = await axios.post(`/ideas/file-upload`, formData)
           fileUrl = uploadRes.data.file_url
         } else {
           fileUrl = activeFile.preview
         }
-      } else {
-        fileUrl = ''
       }
 
       setPayload({
         ...data,
-        academic_year_id: Number(data.academicYearId),
         idea_category_id: Number(data.categoryId),
         is_annonymous: data.isAnonymous,
         file_url: fileUrl,
@@ -278,24 +402,37 @@ export const IdeaListPage = () => {
         title="Ideas"
         subtitle="Portal"
         actions={
-          <Button
-            variant="primary"
-            onClick={() => {
-              setActiveIdea(null)
-              setUploadFiles([])
-              reset({
-                title: '',
-                content: '',
-                categoryId: '',
-                academicYearId: '',
-                isAnonymous: false,
-                terms: true,
-              })
-              setShowFormModal(true)
-            }}
-          >
-            <TbPlus className="me-1" /> New Idea
-          </Button>
+          <div className="d-flex gap-2">
+            <Button
+              variant="outline-success"
+              onClick={handleExportExcel}
+              disabled={isExporting || !items?.length}
+            >
+              {isExporting ? (
+                <Spinner size="sm" className="me-1" />
+              ) : (
+                <TbDownload className="me-1" />
+              )}
+              Export List
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setActiveIdea(null)
+                setUploadFiles([])
+                reset({
+                  title: '',
+                  content: '',
+                  categoryId: '',
+                  isAnonymous: false,
+                  terms: true,
+                })
+                setShowFormModal(true)
+              }}
+            >
+              <TbPlus className="me-1" /> New Idea
+            </Button>
+          </div>
         }
       >
         <ApiHandlingProvider
@@ -306,7 +443,6 @@ export const IdeaListPage = () => {
             title="Submissions"
             data={items || []}
             columns={columns}
-            // isLoading={isLoading}
             itemsName="ideas"
             renderHeader={({ globalFilter, setGlobalFilter }) => (
               <SearchFilter
@@ -340,7 +476,7 @@ export const IdeaListPage = () => {
                 />
               </FormGroup>
             </Col>
-            <Col md={6}>
+            <Col md={12}>
               <FormGroup className="mb-3">
                 <FormLabel>
                   <LuTag /> Category
@@ -353,24 +489,6 @@ export const IdeaListPage = () => {
                   {categories?.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
-                    </option>
-                  ))}
-                </Form.Select>
-              </FormGroup>
-            </Col>
-            <Col md={6}>
-              <FormGroup className="mb-3">
-                <FormLabel>
-                  <LuCalendar /> Academic Year
-                </FormLabel>
-                <Form.Select
-                  isInvalid={!!errors.academicYearId}
-                  {...register('academicYearId')}
-                >
-                  <option value="">Select Year</option>
-                  {academicYears?.map((y) => (
-                    <option key={y.id} value={y.id}>
-                      {y.name}
                     </option>
                   ))}
                 </Form.Select>
@@ -393,7 +511,7 @@ export const IdeaListPage = () => {
                 <FileUploader
                   files={uploadFiles}
                   setFiles={setUploadFiles}
-                  maxFileCount={2}
+                  maxFileCount={1}
                 />
               </FormGroup>
             </Col>

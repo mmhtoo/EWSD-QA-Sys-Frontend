@@ -308,6 +308,8 @@ export const ContentReportListPage = () => {
           }
           setShowApproveModal(false)
           setShowUndoModal(false)
+
+          fetchAll()
         }}
         modalTitle="Confirm Supended"
         confirmButtonText="Supended Report"
