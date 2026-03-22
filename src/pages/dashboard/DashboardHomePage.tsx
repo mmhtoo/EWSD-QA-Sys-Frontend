@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react'
-import { Col, Container, Row } from 'react-bootstrap'
+import { Button, Col, Container, Row } from 'react-bootstrap'
 
 import ComponentCard from '@/components/cards/ComponentCard'
+import DetailFieldList from '@/components/common/DetailFieldList'
 import DashboardPage from '@/components/common/DashboardPage'
+import EntityDetailModal from '@/components/common/EntityDetailModal'
 
 import {
   getIdeaModerationSignalsOptions,
   getIdeasByCategoryOptions,
   getIdeasByDepartmentOptions,
-  getPopularIdeasOptions,
   getReportsByCategoryOptions,
   getUsersByDepartmentOptions,
 } from './chartOptions'
@@ -26,7 +27,6 @@ import {
   getIdeasByCategoriesSeries,
   getIdeasByDepartmentSeries,
   getLikeCountsByIdea,
-  getMostPopularIdeasSeries,
   getReportsByCategoriesSeries,
   getUsersByDepartmentsSeries,
   type DateRange,
@@ -34,6 +34,17 @@ import {
 
 export const DashboardHomePage = () => {
   const [dateRange, setDateRange] = useState<DateRange>([null, null])
+  const [showIdeaDetailModal, setShowIdeaDetailModal] = useState(false)
+  const [selectedPopularIdea, setSelectedPopularIdea] = useState<{
+    id: number
+    title: string
+    content: string
+    comments: number
+    likes: number
+    score: number
+    isAnonymous: boolean
+    createdAt: Date
+  } | null>(null)
   const [rangeStart, rangeEnd] = dateRange
 
   const filteredIdeas = useMemo(
@@ -93,11 +104,29 @@ export const DashboardHomePage = () => {
 
   const mostPopularIdeas = useMemo(
     () =>
-      getMostPopularIdeasSeries(
-        filteredIdeas,
-        commentCountsByIdea,
-        likeCountsByIdea,
-      ),
+      filteredIdeas
+        .map((idea) => {
+          const ideaId = Number(idea.id)
+          const comments = commentCountsByIdea.get(ideaId) ?? 0
+          const likes = likeCountsByIdea.get(ideaId) ?? 0
+
+          return {
+            id: ideaId,
+            title: idea.title,
+            content: idea.content,
+            comments,
+            likes,
+            score: comments + likes,
+            isAnonymous: idea.is_anonymous,
+            createdAt: idea.created_at,
+          }
+        })
+        .sort(
+          (left, right) =>
+            right.score - left.score ||
+            left.content.localeCompare(right.content),
+        )
+        .slice(0, 6),
     [filteredIdeas, commentCountsByIdea, likeCountsByIdea],
   )
 
@@ -147,16 +176,6 @@ export const DashboardHomePage = () => {
     [usersByDepartments],
   )
 
-  const mostPopularIdeasOptions = useMemo(
-    () =>
-      getPopularIdeasOptions(
-        mostPopularIdeas.labels,
-        mostPopularIdeas.commentValues,
-        mostPopularIdeas.likeValues,
-      ),
-    [mostPopularIdeas],
-  )
-
   const ideaModerationSignalsOptions = useMemo(
     () => getIdeaModerationSignalsOptions(ideaModerationSignals),
     [ideaModerationSignals],
@@ -181,7 +200,9 @@ export const DashboardHomePage = () => {
             startDate={rangeStart}
             endDate={rangeEnd}
             hasDateFilter={hasDateFilter}
-            onStartDateChange={(startDate) => setDateRange([startDate, rangeEnd])}
+            onStartDateChange={(startDate) =>
+              setDateRange([startDate, rangeEnd])
+            }
             onEndDateChange={(endDate) => setDateRange([rangeStart, endDate])}
             onReset={() => setDateRange([null, null])}
           />
@@ -234,17 +255,6 @@ export const DashboardHomePage = () => {
             />
           </Col>
 
-          <Col xl={4} md={6}>
-            <DashboardChartCard
-              title="Most Popular Ideas (Comments + Likes)"
-              chartKey={`popular-ideas-${mostPopularIdeas.labels.join('|')}-${mostPopularIdeas.commentValues.join('|')}-${mostPopularIdeas.likeValues.join('|')}`}
-              options={mostPopularIdeasOptions}
-              series={mostPopularIdeasOptions.series ?? []}
-              type="bar"
-              hasData={mostPopularIdeas.labels.length > 0}
-            />
-          </Col>
-
           <Col xl={4} md={12}>
             <DashboardChartCard
               title="Idea and Comment Signals"
@@ -255,9 +265,89 @@ export const DashboardHomePage = () => {
               hasData
             />
           </Col>
+
+          <Col xl={4} md={6}>
+            <ComponentCard title="Most Popular Ideas (Comments + Likes)">
+              <div
+                style={{ minHeight: 330, maxHeight: 330, overflowY: 'auto' }}
+              >
+                {mostPopularIdeas.length ? (
+                  <ul className="list-group list-group-flush">
+                    {mostPopularIdeas.map((idea) => (
+                      <li key={idea.id} className="list-group-item px-0">
+                        <div className="d-flex justify-content-between align-items-start gap-2">
+                          <div>
+                            <p className="mb-1 text-body">{idea.content}</p>
+                            <small className="text-muted">
+                              Comments: {idea.comments} | Likes: {idea.likes}
+                            </small>
+                          </div>
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedPopularIdea(idea)
+                              setShowIdeaDetailModal(true)
+                            }}
+                          >
+                            Detail
+                          </Button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="h-100 d-flex align-items-center justify-content-center text-center">
+                    <p className="text-muted mb-0">
+                      No data available for selected date range.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </ComponentCard>
+          </Col>
         </Row>
 
-        <small className="text-muted mt-3 d-inline-block">{selectedRangeLabel}</small>
+        <EntityDetailModal
+          show={showIdeaDetailModal}
+          title="Idea Details"
+          onHide={() => {
+            setShowIdeaDetailModal(false)
+          }}
+        >
+          {selectedPopularIdea && (
+            <DetailFieldList
+              items={[
+                { label: 'Title', value: selectedPopularIdea.title },
+                { label: 'Content', value: selectedPopularIdea.content },
+                {
+                  label: 'Comments',
+                  value: selectedPopularIdea.comments,
+                },
+                {
+                  label: 'Likes',
+                  value: selectedPopularIdea.likes,
+                },
+                {
+                  label: 'Popularity Score',
+                  value: selectedPopularIdea.score,
+                },
+                {
+                  label: 'Anonymous',
+                  value: selectedPopularIdea.isAnonymous ? 'Yes' : 'No',
+                },
+                {
+                  label: 'Submitted',
+                  value: selectedPopularIdea.createdAt.toLocaleDateString(),
+                },
+              ]}
+            />
+          )}
+        </EntityDetailModal>
+
+        <small className="text-muted mt-3 d-inline-block">
+          {selectedRangeLabel}
+        </small>
       </DashboardPage>
     </Container>
   )
