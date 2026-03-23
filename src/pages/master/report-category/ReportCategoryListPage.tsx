@@ -26,6 +26,7 @@ import type { ReportCategory } from '@/types/entity'
 import { useReportCategoryStore } from './store'
 import ApiHandlingProvider from '@/utils/ApiHandleProvider'
 import TblSkeletonLoading from '@/components/TblSkeletonLoading'
+import Can from '@/components/Can'
 
 const reportCategoryFormSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -80,43 +81,49 @@ export const ReportCategoryListPage = () => {
         header: 'Actions',
         cell: ({ row }: { row: any }) => (
           <div className="d-flex gap-1 align-items-center">
-            <Button
-              variant="light"
-              size="sm"
-              className="btn-icon rounded-circle"
-              onClick={() => {
-                setActiveCategory(row.original)
-                setShowDetailModal(true)
-              }}
-            >
-              <TbEye className="fs-lg" />
-            </Button>
-            <Button
-              variant="light"
-              size="sm"
-              className="btn-icon rounded-circle"
-              onClick={() => {
-                setActiveCategory(row.original)
-                reset({
-                  name: row.original.name,
-                  description: row.original.description ?? '',
-                })
-                setShowFormModal(true)
-              }}
-            >
-              <TbEdit className="fs-lg" />
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              className="btn-icon rounded-circle"
-              onClick={() => {
-                setActiveCategory(row.original)
-                setShowDeleteModal(true)
-              }}
-            >
-              <TbTrash className="fs-lg" />
-            </Button>
+            <Can perform="report.categories.manage">
+              <Button
+                variant="light"
+                size="sm"
+                className="btn-icon rounded-circle"
+                onClick={() => {
+                  setActiveCategory(row.original)
+                  setShowDetailModal(true)
+                }}
+              >
+                <TbEye className="fs-lg" />
+              </Button>
+            </Can>
+            <Can perform="report.categories.manage">
+              <Button
+                variant="light"
+                size="sm"
+                className="btn-icon rounded-circle"
+                onClick={() => {
+                  setActiveCategory(row.original)
+                  reset({
+                    name: row.original.name,
+                    description: row.original.description ?? '',
+                  })
+                  setShowFormModal(true)
+                }}
+              >
+                <TbEdit className="fs-lg" />
+              </Button>
+            </Can>
+            <Can perform="report.categories.manage">
+              <Button
+                variant="danger"
+                size="sm"
+                className="btn-icon rounded-circle"
+                onClick={() => {
+                  setActiveCategory(row.original)
+                  setShowDeleteModal(true)
+                }}
+              >
+                <TbTrash className="fs-lg" />
+              </Button>
+            </Can>
           </div>
         ),
       },
@@ -153,16 +160,18 @@ export const ReportCategoryListPage = () => {
         title="Report Categories"
         subtitle="Master"
         actions={
-          <Button
-            variant="primary"
-            onClick={() => {
-              setActiveCategory(null)
-              reset({ name: '', description: '' })
-              setShowFormModal(true)
-            }}
-          >
-            <TbPlus className="me-1" /> New Category
-          </Button>
+          <Can perform="report.categories.manage">
+            <Button
+              variant="primary"
+              onClick={() => {
+                setActiveCategory(null)
+                reset({ name: '', description: '' })
+                setShowFormModal(true)
+              }}
+            >
+              <TbPlus className="me-1" /> New Category
+            </Button>
+          </Can>
         }
       >
         <ApiHandlingProvider

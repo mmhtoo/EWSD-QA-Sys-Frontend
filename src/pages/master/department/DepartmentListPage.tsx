@@ -27,6 +27,7 @@ import type { Department } from '@/types/entity'
 import { useDepartmentStore } from './store'
 import ApiHandlingProvider from '@/utils/ApiHandleProvider'
 import TblSkeletonLoading from '@/components/TblSkeletonLoading'
+import Can from '@/components/Can'
 
 const departmentFormSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -84,49 +85,55 @@ export const DepartmentListPage = () => {
         header: 'Actions',
         cell: ({ row }: { row: any }) => (
           <div className="d-flex gap-1 align-items-center">
-            <Button
-              variant="light"
-              size="sm"
-              className="btn-icon rounded-circle"
-              onClick={() => {
-                setActiveDepartment(row.original)
-                setShowDetailModal(true)
-              }}
-            >
-              <TbEye className="fs-lg" />
-            </Button>
-            <Button
-              variant="light"
-              size="sm"
-              className="btn-icon rounded-circle"
-              onClick={() => {
-                setActiveDepartment(row.original)
-                reset({
-                  name: row.original.name,
-                  description: row.original.description ?? '',
-                })
-                setShowFormModal(true)
-              }}
-            >
-              <TbEdit className="fs-lg" />
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              className="btn-icon rounded-circle"
-              disabled={row.original.is_in_use}
-              onClick={() => {
-                setActiveDepartment(row.original)
-                setShowDeleteModal(true)
-              }}
-            >
-              <TbTrash className="fs-lg" />
-            </Button>
-            {row.original.is_in_use && (
-              <Badge bg="secondary-subtle" className="text-secondary">
-                In use
-              </Badge>
-            )}
+            <Can perform="department.manage">
+              <Button
+                variant="light"
+                size="sm"
+                className="btn-icon rounded-circle"
+                onClick={() => {
+                  setActiveDepartment(row.original)
+                  setShowDetailModal(true)
+                }}
+              >
+                <TbEye className="fs-lg" />
+              </Button>
+            </Can>
+            <Can perform="department.manage">
+              <Button
+                variant="light"
+                size="sm"
+                className="btn-icon rounded-circle"
+                onClick={() => {
+                  setActiveDepartment(row.original)
+                  reset({
+                    name: row.original.name,
+                    description: row.original.description ?? '',
+                  })
+                  setShowFormModal(true)
+                }}
+              >
+                <TbEdit className="fs-lg" />
+              </Button>
+            </Can>
+            <Can perform="department.manage">
+              <Button
+                variant="danger"
+                size="sm"
+                className="btn-icon rounded-circle"
+                disabled={row.original.is_in_use}
+                onClick={() => {
+                  setActiveDepartment(row.original)
+                  setShowDeleteModal(true)
+                }}
+              >
+                <TbTrash className="fs-lg" />
+              </Button>
+              {row.original.is_in_use && (
+                <Badge bg="secondary-subtle" className="text-secondary">
+                  In use
+                </Badge>
+              )}
+            </Can>
           </div>
         ),
       },
@@ -162,16 +169,18 @@ export const DepartmentListPage = () => {
         title="Departments"
         subtitle="Master"
         actions={
-          <Button
-            variant="primary"
-            onClick={() => {
-              setActiveDepartment(null)
-              reset({ name: '', description: '' })
-              setShowFormModal(true)
-            }}
-          >
-            <TbPlus className="me-1" /> New Department
-          </Button>
+          <Can perform="department.manage">
+            <Button
+              variant="primary"
+              onClick={() => {
+                setActiveDepartment(null)
+                reset({ name: '', description: '' })
+                setShowFormModal(true)
+              }}
+            >
+              <TbPlus className="me-1" /> New Department
+            </Button>
+          </Can>
         }
       >
         <ApiHandlingProvider

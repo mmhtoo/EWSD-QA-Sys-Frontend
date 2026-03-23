@@ -18,7 +18,9 @@ import {
   Spinner,
 } from 'react-bootstrap'
 import {
+  TbDownload,
   TbEdit,
+  TbFileDescription,
   TbMessageDots,
   TbThumbDown,
   TbThumbUp,
@@ -34,6 +36,28 @@ import { useIdeaStore, useIdeaSpecificStore } from './store'
 import { useIdeaCategoryStore } from '../master/idea-category/store'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
+import Can from '@/components/Can'
+
+const AttachmentPreview = ({ url }: { url?: string | null }) => {
+  if (!url) return null
+  return (
+    <div className="mt-2 d-inline-block">
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="d-flex align-items-center gap-1 p-1 px-2 rounded bg-primary-subtle text-primary text-decoration-none border border-primary-subtle"
+        style={{ fontSize: '11px' }}
+      >
+        <TbFileDescription size={14} />
+        <span className="text-truncate" style={{ maxWidth: '150px' }}>
+          View Attachment
+        </span>
+        <TbDownload size={12} className="ms-1" />
+      </a>
+    </div>
+  )
+}
 
 export const IdeaFeedsPage = () => {
   const [activeIdea, setActiveIdea] = useState<any | null>(null)
@@ -187,7 +211,7 @@ export const IdeaFeedsPage = () => {
         }
       }
 
-      await axios.patch(`/ideas/${activeIdea.id}/comments/${commentId}`, {
+      await axios.patch(`/comments/${commentId}`, {
         content,
         is_annonymous: isAnonymous,
         file_url: fileUrl,
@@ -206,7 +230,7 @@ export const IdeaFeedsPage = () => {
   const handleDeleteComment = async (commentId: number) => {
     if (!activeIdea) return
     try {
-      await axios.delete(`/ideas/comments/${commentId}`)
+      await axios.delete(`/comments/${commentId}`)
       toast.success('Comment deleted')
       fetchComments(activeIdea.id)
     } catch (error) {
@@ -269,6 +293,7 @@ export const IdeaFeedsPage = () => {
 
                         <h4 className="mb-2">{item.title}</h4>
                         <p className="text-secondary">{item.content}</p>
+                        <AttachmentPreview url={item.file_url} />
                         <hr className="my-3 opacity-25" />
                         <div className="d-flex align-items-center justify-content-between">
                           <div className="d-flex flex-wrap gap-3 text-muted fs-xxs">
@@ -304,15 +329,17 @@ export const IdeaFeedsPage = () => {
                               {item.thumbs_down || 0}
                             </span>
                           </div>
-                          <Button
-                            variant="outline-primary"
-                            size="sm"
-                            className="ms-auto d-inline-flex align-items-center gap-1"
-                            onClick={() => handleOpenComments(item)}
-                          >
-                            <TbMessageDots />
-                            Comments
-                          </Button>
+                          <Can perform="comment.view">
+                            <Button
+                              variant="outline-primary"
+                              size="sm"
+                              className="ms-auto d-inline-flex align-items-center gap-1"
+                              onClick={() => handleOpenComments(item)}
+                            >
+                              <TbMessageDots />
+                              Comments
+                            </Button>
+                          </Can>
                         </div>
                       </CardBody>
                     </Card>

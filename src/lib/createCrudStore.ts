@@ -82,7 +82,7 @@ export const createCrudStore = <T extends { id?: string | number }>(
         }))
         toast.success('Success')
       } catch (err: any) {
-        toast.error('Something went wrong')
+        toast.error(err?.response?.data?.message || 'Something went wrong')
         set({
           error: err?.response?.data?.message || err.message,
           isLoading: false,
@@ -106,7 +106,7 @@ export const createCrudStore = <T extends { id?: string | number }>(
         }))
         toast.success('Success')
       } catch (err: any) {
-        toast.error('Something went wrong')
+        toast.error(err?.response?.data?.message || 'Something went wrong')
         set({
           error: err?.response?.data?.message || err.message,
           isLoading: false,
@@ -124,7 +124,7 @@ export const createCrudStore = <T extends { id?: string | number }>(
         }))
         toast.success('Success')
       } catch (err: any) {
-        toast.error('Something went wrong')
+        toast.error(err?.response?.data?.message || 'Something went wrong')
         set({
           error: err?.response?.data?.message || err.message,
           isLoading: false,
@@ -148,6 +148,10 @@ export const createCrudStore = <T extends { id?: string | number }>(
           'token',
           JSON.stringify({
             ...oldStorage,
+            user: {
+              ...oldStorage.user,
+              permissions: res.data.user.permissions,
+            },
             access_token: res.data.access_token,
             refresh_token: res.data.refresh_token,
           }),
@@ -156,7 +160,7 @@ export const createCrudStore = <T extends { id?: string | number }>(
           isLoading: false,
         })
       } catch (err: any) {
-        toast.error('Something went wrong')
+        toast.error(err?.response?.data?.message || 'Something went wrong')
         set({
           error: err?.response?.data?.message || err.message,
           isLoading: false,

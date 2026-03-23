@@ -38,7 +38,10 @@ const UserProfile = () => {
             alt="user-image"
           />
           <div className="d-lg-flex align-items-center gap-1 d-none">
-            <h5 className="my-0">Geneva</h5>
+            <h5 className="my-0">
+              {JSON.parse(localStorage.getItem('token')!)?.user?.name ??
+                'Geneva'}
+            </h5>
             <TbChevronDown className="align-middle" />
           </div>
         </DropdownToggle>

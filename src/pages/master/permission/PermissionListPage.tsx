@@ -27,6 +27,7 @@ import type { Permission } from '@/types/entity'
 import { usePermissionStore } from './store'
 import ApiHandlingProvider from '@/utils/ApiHandleProvider'
 import TblSkeletonLoading from '@/components/TblSkeletonLoading'
+import Can from '@/components/Can'
 
 const permissionFormSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -81,49 +82,55 @@ export const PermissionListPage = () => {
         header: 'Actions',
         cell: ({ row }: any) => (
           <div className="d-flex gap-1 align-items-center">
-            <Button
-              variant="light"
-              size="sm"
-              className="btn-icon rounded-circle"
-              onClick={() => {
-                setActivePermission(row.original)
-                setShowDetailModal(true)
-              }}
-            >
-              <TbEye className="fs-lg" />
-            </Button>
-            <Button
-              variant="light"
-              size="sm"
-              className="btn-icon rounded-circle"
-              onClick={() => {
-                setActivePermission(row.original)
-                reset({
-                  name: row.original.name,
-                  description: row.original.description ?? '',
-                })
-                setShowFormModal(true)
-              }}
-            >
-              <TbEdit className="fs-lg" />
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              className="btn-icon rounded-circle"
-              disabled={row.original.is_in_use}
-              onClick={() => {
-                setActivePermission(row.original)
-                setShowDeleteModal(true)
-              }}
-            >
-              <TbTrash className="fs-lg" />
-            </Button>
-            {row.original.is_in_use && (
-              <Badge bg="secondary-subtle" className="text-secondary">
-                In use
-              </Badge>
-            )}
+            <Can perform="permission.manage">
+              <Button
+                variant="light"
+                size="sm"
+                className="btn-icon rounded-circle"
+                onClick={() => {
+                  setActivePermission(row.original)
+                  setShowDetailModal(true)
+                }}
+              >
+                <TbEye className="fs-lg" />
+              </Button>
+            </Can>
+            <Can perform="permission.manage">
+              <Button
+                variant="light"
+                size="sm"
+                className="btn-icon rounded-circle"
+                onClick={() => {
+                  setActivePermission(row.original)
+                  reset({
+                    name: row.original.name,
+                    description: row.original.description ?? '',
+                  })
+                  setShowFormModal(true)
+                }}
+              >
+                <TbEdit className="fs-lg" />
+              </Button>
+            </Can>
+            <Can perform="permission.manage">
+              <Button
+                variant="danger"
+                size="sm"
+                className="btn-icon rounded-circle"
+                disabled={row.original.is_in_use}
+                onClick={() => {
+                  setActivePermission(row.original)
+                  setShowDeleteModal(true)
+                }}
+              >
+                <TbTrash className="fs-lg" />
+              </Button>
+              {row.original.is_in_use && (
+                <Badge bg="secondary-subtle" className="text-secondary">
+                  In use
+                </Badge>
+              )}
+            </Can>
           </div>
         ),
       },
@@ -160,16 +167,18 @@ export const PermissionListPage = () => {
         title="Permissions"
         subtitle="Master"
         actions={
-          <Button
-            variant="primary"
-            onClick={() => {
-              setActivePermission(null)
-              reset({ name: '', description: '' })
-              setShowFormModal(true)
-            }}
-          >
-            <TbPlus className="me-1" /> New Permission
-          </Button>
+          <Can perform="permission.manage">
+            <Button
+              variant="primary"
+              onClick={() => {
+                setActivePermission(null)
+                reset({ name: '', description: '' })
+                setShowFormModal(true)
+              }}
+            >
+              <TbPlus className="me-1" /> New Permission
+            </Button>
+          </Can>
         }
       >
         <ApiHandlingProvider

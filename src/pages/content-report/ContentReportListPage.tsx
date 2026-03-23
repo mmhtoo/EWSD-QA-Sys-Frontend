@@ -23,6 +23,7 @@ import {
   useUserActivitationStore,
 } from './store'
 import { useReportCategoryStore } from '../master/report-category/store'
+import Can from '@/components/Can'
 
 const columnHelper = createColumnHelper<any>()
 
@@ -119,55 +120,61 @@ export const ContentReportListPage = () => {
         header: 'Actions',
         cell: ({ row }: any) => (
           <div className="d-flex gap-1">
-            <Button
-              variant="light"
-              size="sm"
-              className="btn-icon rounded-circle"
-              onClick={() => {
-                setActiveReport(row.original)
-                setShowDetailModal(true)
-              }}
-            >
-              <TbEye className="fs-lg" />
-            </Button>
-
-            {row.original.status === 'pending' ? (
+            <Can perform="report.manage">
               <Button
-                variant="success"
+                variant="light"
                 size="sm"
                 className="btn-icon rounded-circle"
                 onClick={() => {
                   setActiveReport(row.original)
-                  setShowApproveModal(true)
+                  setShowDetailModal(true)
                 }}
               >
-                <TbCheck className="fs-lg" />
+                <TbEye className="fs-lg" />
               </Button>
-            ) : (
+            </Can>
+
+            <Can perform="report.manage">
+              {row.original.status === 'pending' ? (
+                <Button
+                  variant="success"
+                  size="sm"
+                  className="btn-icon rounded-circle"
+                  onClick={() => {
+                    setActiveReport(row.original)
+                    setShowApproveModal(true)
+                  }}
+                >
+                  <TbCheck className="fs-lg" />
+                </Button>
+              ) : (
+                <Button
+                  variant="warning"
+                  size="sm"
+                  className="btn-icon rounded-circle"
+                  onClick={() => {
+                    setActiveReport(row.original)
+                    setShowUndoModal(true)
+                  }}
+                >
+                  <TbRotateClockwise2 className="fs-lg" />
+                </Button>
+              )}
+            </Can>
+
+            <Can perform="report.manage">
               <Button
-                variant="warning"
+                variant="danger"
                 size="sm"
                 className="btn-icon rounded-circle"
                 onClick={() => {
                   setActiveReport(row.original)
-                  setShowUndoModal(true)
+                  setShowDeleteModal(true)
                 }}
               >
-                <TbRotateClockwise2 className="fs-lg" />
+                <TbTrash className="fs-lg" />
               </Button>
-            )}
-
-            <Button
-              variant="danger"
-              size="sm"
-              className="btn-icon rounded-circle"
-              onClick={() => {
-                setActiveReport(row.original)
-                setShowDeleteModal(true)
-              }}
-            >
-              <TbTrash className="fs-lg" />
-            </Button>
+            </Can>
           </div>
         ),
       },
@@ -308,6 +315,8 @@ export const ContentReportListPage = () => {
           }
           setShowApproveModal(false)
           setShowUndoModal(false)
+
+          fetchAll(`?reportable_type=${reportableType}`)
         }}
         modalTitle="Confirm Supended"
         confirmButtonText="Supended Report"
@@ -336,6 +345,8 @@ export const ContentReportListPage = () => {
           }
           setShowApproveModal(false)
           setShowUndoModal(false)
+
+          fetchAll(`?reportable_type=${reportableType}`)
         }}
         modalTitle="Re-open Report"
         confirmButtonText="Re-open"
