@@ -36,6 +36,7 @@ import type { AcademicYear } from '@/types/entity'
 import { useAcademicYearStore } from './store'
 import ApiHandlingProvider from '@/utils/ApiHandleProvider'
 import TblSkeletonLoading from '@/components/TblSkeletonLoading'
+import Can from '@/components/Can'
 
 const academicYearFormSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -122,72 +123,80 @@ export const AcademicYearListPage = () => {
         cell: ({ row }: any) => {
           return (
             <div className="d-flex gap-1 align-items-center">
-              <Button
-                variant="light"
-                size="sm"
-                className="btn-icon rounded-circle"
-                onClick={() => {
-                  setPendingYear(row.original) // Temporary state to hold the row data
-                  setShowConfirmModal(true) // Open the confirmation dialog
-                }}
-              >
-                <TbCircleCheckFilled
-                  className={`fs-lg ${
-                    row.original.is_active ? 'text-success' : 'text-muted'
-                  }`}
-                />
-              </Button>
-              <Button
-                variant="light"
-                size="sm"
-                className="btn-icon rounded-circle"
-                onClick={() => {
-                  setActiveYear(row.original)
-                  setShowDetailModal(true)
-                }}
-              >
-                <TbEye className="fs-lg" />
-              </Button>
-              <Button
-                variant="light"
-                size="sm"
-                className="btn-icon rounded-circle"
-                onClick={() => {
-                  fetchById(row.original.id)
-                  setActiveYear(row.original)
-                  reset({
-                    name: row.original.name,
-                    fromDate: formatForInput(row.original.from_date),
-                    toDate: formatForInput(row.original.to_date),
-                    submissionDeadline: formatForInput(
-                      row.original.submission_deadline,
-                    ),
-                    feedbackCutOffDeadline: formatForInput(
-                      row.original.feedback_cut_off_deadline,
-                    ),
-                  })
-                  setShowFormModal(true)
-                }}
-              >
-                <TbEdit className="fs-lg" />
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                className="btn-icon rounded-circle"
-                disabled={row.original.is_in_use}
-                onClick={() => {
-                  setActiveYear(row.original)
-                  setShowDeleteModal(true)
-                }}
-              >
-                <TbTrash className="fs-lg" />
-              </Button>
-              {row.original.is_in_use && (
-                <Badge bg="secondary-subtle" className="text-secondary">
-                  In use
-                </Badge>
-              )}
+              <Can perform="academic.manage">
+                <Button
+                  variant="light"
+                  size="sm"
+                  className="btn-icon rounded-circle"
+                  onClick={() => {
+                    setPendingYear(row.original) // Temporary state to hold the row data
+                    setShowConfirmModal(true) // Open the confirmation dialog
+                  }}
+                >
+                  <TbCircleCheckFilled
+                    className={`fs-lg ${
+                      row.original.is_active ? 'text-success' : 'text-muted'
+                    }`}
+                  />
+                </Button>
+              </Can>
+              <Can perform="academic.manage">
+                <Button
+                  variant="light"
+                  size="sm"
+                  className="btn-icon rounded-circle"
+                  onClick={() => {
+                    setActiveYear(row.original)
+                    setShowDetailModal(true)
+                  }}
+                >
+                  <TbEye className="fs-lg" />
+                </Button>
+              </Can>
+              <Can perform="academic.manage">
+                <Button
+                  variant="light"
+                  size="sm"
+                  className="btn-icon rounded-circle"
+                  onClick={() => {
+                    fetchById(row.original.id)
+                    setActiveYear(row.original)
+                    reset({
+                      name: row.original.name,
+                      fromDate: formatForInput(row.original.from_date),
+                      toDate: formatForInput(row.original.to_date),
+                      submissionDeadline: formatForInput(
+                        row.original.submission_deadline,
+                      ),
+                      feedbackCutOffDeadline: formatForInput(
+                        row.original.feedback_cut_off_deadline,
+                      ),
+                    })
+                    setShowFormModal(true)
+                  }}
+                >
+                  <TbEdit className="fs-lg" />
+                </Button>
+              </Can>
+              <Can perform="academic.manage">
+                <Button
+                  variant="danger"
+                  size="sm"
+                  className="btn-icon rounded-circle"
+                  disabled={row.original.is_in_use}
+                  onClick={() => {
+                    setActiveYear(row.original)
+                    setShowDeleteModal(true)
+                  }}
+                >
+                  <TbTrash className="fs-lg" />
+                </Button>
+                {row.original.is_in_use && (
+                  <Badge bg="secondary-subtle" className="text-secondary">
+                    In use
+                  </Badge>
+                )}
+              </Can>
             </div>
           )
         },
@@ -231,22 +240,24 @@ export const AcademicYearListPage = () => {
         title="Academic Years"
         subtitle="Master"
         actions={
-          <Button
-            variant="primary"
-            onClick={() => {
-              setActiveYear(null)
-              reset({
-                name: '',
-                fromDate: '',
-                toDate: '',
-                submissionDeadline: '',
-                feedbackCutOffDeadline: '',
-              })
-              setShowFormModal(true)
-            }}
-          >
-            <TbPlus className="me-1" /> New Academic Year
-          </Button>
+          <Can perform="academic.manage">
+            <Button
+              variant="primary"
+              onClick={() => {
+                setActiveYear(null)
+                reset({
+                  name: '',
+                  fromDate: '',
+                  toDate: '',
+                  submissionDeadline: '',
+                  feedbackCutOffDeadline: '',
+                })
+                setShowFormModal(true)
+              }}
+            >
+              <TbPlus className="me-1" /> New Academic Year
+            </Button>
+          </Can>
         }
       >
         <ApiHandlingProvider

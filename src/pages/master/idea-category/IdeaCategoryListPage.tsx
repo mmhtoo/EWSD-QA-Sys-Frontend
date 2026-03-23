@@ -27,6 +27,7 @@ import type { IdeaCategory } from '@/types/entity'
 import { useIdeaCategoryStore } from './store'
 import ApiHandlingProvider from '@/utils/ApiHandleProvider'
 import TblSkeletonLoading from '@/components/TblSkeletonLoading'
+import Can from '@/components/Can'
 
 const ideaCategoryFormSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -82,49 +83,55 @@ export const IdeaCategoryListPage = () => {
         cell: ({ row }: any) => {
           return (
             <div className="d-flex gap-1 align-items-center">
-              <Button
-                variant="light"
-                size="sm"
-                className="btn-icon rounded-circle"
-                onClick={() => {
-                  setActiveCategory(row.original)
-                  setShowDetailModal(true)
-                }}
-              >
-                <TbEye className="fs-lg" />
-              </Button>
-              <Button
-                variant="light"
-                size="sm"
-                className="btn-icon rounded-circle"
-                onClick={() => {
-                  setActiveCategory(row.original)
-                  reset({
-                    name: row.original.name,
-                    description: row.original.description ?? '',
-                  })
-                  setShowFormModal(true)
-                }}
-              >
-                <TbEdit className="fs-lg" />
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                className="btn-icon rounded-circle"
-                disabled={row.original.is_in_use}
-                onClick={() => {
-                  setActiveCategory(row.original)
-                  setShowDeleteModal(true)
-                }}
-              >
-                <TbTrash className="fs-lg" />
-              </Button>
-              {row.original.is_in_use && (
-                <Badge bg="secondary-subtle" className="text-secondary">
-                  In use
-                </Badge>
-              )}
+              <Can perform="idea.categories.manage">
+                <Button
+                  variant="light"
+                  size="sm"
+                  className="btn-icon rounded-circle"
+                  onClick={() => {
+                    setActiveCategory(row.original)
+                    setShowDetailModal(true)
+                  }}
+                >
+                  <TbEye className="fs-lg" />
+                </Button>
+              </Can>
+              <Can perform="idea.categories.manage">
+                <Button
+                  variant="light"
+                  size="sm"
+                  className="btn-icon rounded-circle"
+                  onClick={() => {
+                    setActiveCategory(row.original)
+                    reset({
+                      name: row.original.name,
+                      description: row.original.description ?? '',
+                    })
+                    setShowFormModal(true)
+                  }}
+                >
+                  <TbEdit className="fs-lg" />
+                </Button>
+              </Can>
+              <Can perform="idea.categories.manage">
+                <Button
+                  variant="danger"
+                  size="sm"
+                  className="btn-icon rounded-circle"
+                  disabled={row.original.is_in_use}
+                  onClick={() => {
+                    setActiveCategory(row.original)
+                    setShowDeleteModal(true)
+                  }}
+                >
+                  <TbTrash className="fs-lg" />
+                </Button>
+                {row.original.is_in_use && (
+                  <Badge bg="secondary-subtle" className="text-secondary">
+                    In use
+                  </Badge>
+                )}
+              </Can>
             </div>
           )
         },
@@ -161,16 +168,18 @@ export const IdeaCategoryListPage = () => {
         title="Idea Categories"
         subtitle="Master"
         actions={
-          <Button
-            variant="primary"
-            onClick={() => {
-              setActiveCategory(null)
-              reset({ name: '', description: '' })
-              setShowFormModal(true)
-            }}
-          >
-            <TbPlus className="me-1" /> New Category
-          </Button>
+          <Can perform="idea.categories.manage">
+            <Button
+              variant="primary"
+              onClick={() => {
+                setActiveCategory(null)
+                reset({ name: '', description: '' })
+                setShowFormModal(true)
+              }}
+            >
+              <TbPlus className="me-1" /> New Category
+            </Button>
+          </Can>
         }
       >
         <ApiHandlingProvider

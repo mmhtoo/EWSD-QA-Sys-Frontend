@@ -48,6 +48,7 @@ import ApiHandlingProvider from '@/utils/ApiHandleProvider'
 import TblSkeletonLoading from '@/components/TblSkeletonLoading'
 import axios from '@/lib/axios'
 import { getMimeType } from '@/utils'
+import Can from '@/components/Can'
 
 const ideaFormSchema = z.object({
   title: z.string().min(5, 'Title is required'),
@@ -125,16 +126,14 @@ export const IdeaListPage = () => {
       const commentRes = await axios.get(`/ideas/${rowItem.id}/comments`)
       const comments = commentRes.data?.data || []
 
-      const reportRes = await axios.get(`/reports`)
-      const rawReports = reportRes.data?.data || []
-      const reports = rawReports.filter(
-        (r: any) => Number(r.idea_id) === Number(rowItem.id),
-      )
+      const reportRes = await axios.get(`/reports?idea_id=${rowItem.id}`)
+      const reports = reportRes.data?.data || []
 
       const wb = XLSX.utils.book_new()
 
       const ideaDetail = [
         ['Field', 'Details'],
+        ['ID', rowItem.id],
         ['Title', rowItem.title],
         ['Content', rowItem.content],
         ['Category', rowItem.idea_category || 'N/A'],
@@ -143,13 +142,17 @@ export const IdeaListPage = () => {
           rowItem.is_annonymous ? 'Anonymous' : rowItem.user_info?.name,
         ],
         ['Status', rowItem.status || 'Active'],
+        ['Main Attachment', rowItem.file_url ? 'Yes' : 'No'],
         ['Date', rowItem.created_at],
       ]
       const ws1 = XLSX.utils.aoa_to_sheet(ideaDetail)
       XLSX.utils.book_append_sheet(wb, ws1, 'Idea Details')
 
       const commentRows = comments.map((c: any) => ({
-        Author: c.is_anonymous ? 'Anonymous' : c.user_info?.name || 'Unknown',
+        Author:
+          c.is_annonymous || c.is_anonymous
+            ? 'Anonymous'
+            : c.user_info?.name || 'Unknown',
         Comment: c.content,
         Date: c.created_at ? new Date(c.created_at).toLocaleString() : 'N/A',
         Attachment: c.file_url ? 'File included' : 'None',
@@ -173,15 +176,19 @@ export const IdeaListPage = () => {
       zip.file('idea_summary.xlsx', excelBuffer)
 
       const filesToDownload = []
+
       if (rowItem.file_url) {
-        filesToDownload.push({ url: rowItem.file_url, name: 'idea_main_doc' })
+        filesToDownload.push({
+          url: rowItem.file_url,
+          name: `idea_${rowItem.id}_main_attachment`,
+        })
       }
 
       comments.forEach((c: any, index: number) => {
         if (c.file_url) {
           filesToDownload.push({
             url: c.file_url,
-            name: `comment_${index + 1}_doc`,
+            name: `comment_${index + 1}_attachment`,
           })
         }
       })
@@ -192,6 +199,7 @@ export const IdeaListPage = () => {
             const res = await fetch(fileObj.url)
             if (!res.ok) throw new Error('Network response was not ok')
             const blob = await res.blob()
+
             const extension =
               fileObj.url.split('.').pop()?.split(/\#|\?/)[0] || 'bin'
             zip.file(`${fileObj.name}.${extension}`, blob)
@@ -204,7 +212,7 @@ export const IdeaListPage = () => {
       const content = await zip.generateAsync({ type: 'blob' })
       saveAs(content, `Idea_${rowItem.id}_Package.zip`)
     } catch (error) {
-      console.error('ZIP Error:', error)
+      console.error('ZIP Generation Error:', error)
     } finally {
       setZipProcessingId(null)
     }
@@ -213,7 +221,9 @@ export const IdeaListPage = () => {
   const handleExportExcel = () => {
     setIsExporting(true)
     try {
-      const dataToExport = items.map((item) => ({
+      const sortedItems = [...items].sort((a, b) => Number(a.id) - Number(b.id))
+
+      const dataToExport = sortedItems.map((item) => ({
         ID: item.id,
         Title: item.title,
         Content: item.content,
@@ -277,78 +287,99 @@ export const IdeaListPage = () => {
         header: 'Actions',
         cell: ({ row }: any) => (
           <div className="d-flex gap-1">
-            <Button
-              variant="light"
-              size="sm"
-              className="btn-icon rounded-circle text-primary"
-              onClick={() => handleDownloadZip(row.original)}
-              disabled={zipProcessingId === row.original.id}
-              title="Download ZIP"
-            >
-              {zipProcessingId === row.original.id ? (
-                <Spinner size="sm" animation="border" />
-              ) : (
-                <TbArchive size={18} />
-              )}
-            </Button>
+            <Can perform="idea.export.zip">
+              <Button
+                variant="light"
+                size="sm"
+                className="btn-icon rounded-circle text-primary"
+                onClick={() => handleDownloadZip(row.original)}
+                disabled={zipProcessingId === row.original.id}
+                title="Download ZIP"
+              >
+                {zipProcessingId === row.original.id ? (
+                  <Spinner size="sm" animation="border" />
+                ) : (
+                  <TbArchive size={18} />
+                )}
+              </Button>
+            </Can>
+            <Can perform="idea.view">
+              <Button
+                variant="light"
+                size="sm"
+                className="btn-icon rounded-circle"
+                onClick={() => {
+                  setActiveIdea(row.original)
+                  setShowDetailModal(true)
+                }}
+              >
+                <TbEye />
+              </Button>
+            </Can>
 
-            <Button
-              variant="light"
-              size="sm"
-              className="btn-icon rounded-circle"
-              onClick={() => {
-                setActiveIdea(row.original)
-                setShowDetailModal(true)
-              }}
-            >
-              <TbEye />
-            </Button>
-            <Button
-              variant="light"
-              size="sm"
-              className="btn-icon rounded-circle"
-              onClick={async () => {
-                await fetchById(row.original.id)
-                const latestItem =
-                  ideaStore.getState().activeItem || row.original
-                setActiveIdea(latestItem)
+            {JSON.parse(localStorage.getItem('token')!)?.user.user_id ===
+              row.original.user_info.id && (
+              <Can perform="idea.update">
+                <Button
+                  variant="light"
+                  size="sm"
+                  className="btn-icon rounded-circle"
+                  onClick={async () => {
+                    await fetchById(row.original.id)
 
-                if (latestItem?.file_url) {
-                  setUploadFiles([
-                    {
-                      name: 'Attachment',
-                      type: getMimeType(latestItem.file_url),
-                      preview: latestItem.file_url,
-                      isExisting: true,
-                    } as any,
-                  ])
-                } else {
-                  setUploadFiles([])
-                }
+                    const latestItem =
+                      ideaStore.getState().activeItem || row.original
+                    setActiveIdea(latestItem)
 
-                reset({
-                  title: latestItem.title,
-                  content: latestItem.content,
-                  categoryId: String(latestItem.idea_category_id),
-                  isAnonymous: !!latestItem.is_annonymous,
-                  terms: true,
-                })
-                setShowFormModal(true)
-              }}
-            >
-              <TbEdit />
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              className="btn-icon rounded-circle"
-              onClick={() => {
-                setActiveIdea(row.original)
-                setShowDeleteModal(true)
-              }}
-            >
-              <TbTrash />
-            </Button>
+                    if (latestItem?.file_url) {
+                      setUploadFiles([
+                        {
+                          name: 'Attachment',
+                          type: getMimeType(latestItem.file_url),
+                          preview: latestItem.file_url,
+                          isExisting: true,
+                        } as any,
+                      ])
+                    } else {
+                      setUploadFiles([])
+                    }
+
+                    const selectedCategoryId = latestItem.category?.id
+                      ? String(latestItem.category.id)
+                      : String(latestItem.idea_category_id || '')
+
+                    reset({
+                      title: latestItem.title,
+                      content: latestItem.content,
+                      categoryId: selectedCategoryId,
+                      isAnonymous: !!latestItem.is_annonymous,
+                      terms: true,
+                    })
+
+                    setShowFormModal(true)
+                  }}
+                >
+                  <TbEdit />
+                </Button>
+              </Can>
+            )}
+
+            {JSON.parse(localStorage.getItem('token')!)?.user.user_id ===
+              row.original.user_info.id && (
+              <Can perform="idea.delete">
+                <Button
+                  variant="danger"
+                  size="sm"
+                  className="btn-icon rounded-circle"
+                  onClick={() => {
+                    setActiveIdea(row.original)
+                    setShowDeleteModal(true)
+                  }}
+                >
+                  <TbTrash />
+                </Button>
+              </Can>
+            )}
           </div>
         ),
       },
@@ -403,35 +434,39 @@ export const IdeaListPage = () => {
         subtitle="Portal"
         actions={
           <div className="d-flex gap-2">
-            <Button
-              variant="outline-success"
-              onClick={handleExportExcel}
-              disabled={isExporting || !items?.length}
-            >
-              {isExporting ? (
-                <Spinner size="sm" className="me-1" />
-              ) : (
-                <TbDownload className="me-1" />
-              )}
-              Export List
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => {
-                setActiveIdea(null)
-                setUploadFiles([])
-                reset({
-                  title: '',
-                  content: '',
-                  categoryId: '',
-                  isAnonymous: false,
-                  terms: true,
-                })
-                setShowFormModal(true)
-              }}
-            >
-              <TbPlus className="me-1" /> New Idea
-            </Button>
+            <Can perform="idea.export.csv">
+              <Button
+                variant="outline-success"
+                onClick={handleExportExcel}
+                disabled={isExporting || !items?.length}
+              >
+                {isExporting ? (
+                  <Spinner size="sm" className="me-1" />
+                ) : (
+                  <TbDownload className="me-1" />
+                )}
+                Export List
+              </Button>
+            </Can>
+            <Can perform="idea.create">
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setActiveIdea(null)
+                  setUploadFiles([])
+                  reset({
+                    title: '',
+                    content: '',
+                    categoryId: '',
+                    isAnonymous: false,
+                    terms: true,
+                  })
+                  setShowFormModal(true)
+                }}
+              >
+                <TbPlus className="me-1" /> New Idea
+              </Button>
+            </Can>
           </div>
         }
       >

@@ -24,7 +24,6 @@ import {
   TbCornerDownRight,
   TbEdit,
   TbTrash,
-  TbPaperclip,
   TbDownload,
   TbFileDescription,
   TbDotsVertical,
@@ -38,6 +37,8 @@ import EntityFormModal from '@/components/common/EntityFormModal'
 import { useReportCategoryStore } from '@/pages/master/report-category/store'
 import ApiHandlingProvider from '@/utils/ApiHandleProvider'
 import toast from 'react-hot-toast'
+import { getMimeType } from '@/utils'
+import Can from '@/components/Can'
 
 export type FeedComment = Comment & {
   replies?: FeedComment[]
@@ -125,13 +126,16 @@ const IdeaCommentsDrawer = ({
     replyFiles,
     setReplyFiles,
   } = useIdeaSpecificStore()
+  console.log('🚀 ~ IdeaCommentsDrawer ~ formValues:', formValues)
 
   // --- Modal States ---
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [targetDeleteId, setTargetDeleteId] = useState<number | null>(null)
 
   const [showReportModal, setShowReportModal] = useState(false)
-  const [reportType, setReportType] = useState<'comment' | 'user' | null>(null)
+  const [reportType, setReportType] = useState<
+    'comment' | 'user' | 'post' | null
+  >(null)
   const [reportTargetId, setReportTargetId] = useState<number | null>(null)
   const [reportCategory, setReportCategory] = useState('')
   const [reportReason, setReportReason] = useState('')
@@ -185,18 +189,37 @@ const IdeaCommentsDrawer = ({
     }
   }, [show, setCommentFiles, setReplyFiles])
 
-  // --- Handlers ---
-  const openReportModal = (type: 'comment' | 'user', id: number) => {
+  const openReportModal = (type: 'comment' | 'user' | 'post', id: number) => {
     setReportCategory(String(items[0]?.id))
     setReportType(type)
     setReportTargetId(id)
     setShowReportModal(true)
   }
 
+  // --- Handlers ---
+  const handleEnterEditMode = (comment: FeedComment) => {
+    setEditTargetId(comment.id as number)
+    setEditText(comment.content)
+    // Synchronize anonymous state from the existing comment
+    setEditAnonymous(!!comment.is_annonymous)
+
+    if (comment?.file_url) {
+      setCommentFiles([
+        {
+          name: 'Attachment',
+          type: getMimeType(comment.file_url),
+          preview: comment.file_url,
+          isExisting: true,
+        } as any,
+      ])
+    } else {
+      setCommentFiles([])
+    }
+  }
+
   const handleReportSubmit = async () => {
     if (reportType === 'comment') {
       setPayload({
-        idea_id: formValues.id,
         comment_id: reportTargetId,
         category_id: Number(reportCategory),
         reason: reportReason,
@@ -204,19 +227,22 @@ const IdeaCommentsDrawer = ({
       await create()
     } else if (reportType === 'user') {
       setPayload({
-        idea_id: formValues.id,
-        user_id: reportTargetId,
+        reported_account_id: reportTargetId,
+        category_id: Number(reportCategory),
+        reason: reportReason,
+      })
+      await create()
+    } else if (reportType === 'post') {
+      setPayload({
+        idea_id: reportTargetId,
         category_id: Number(reportCategory),
         reason: reportReason,
       })
       await create()
     } else {
-      toast.error('Something wrong.')
+      toast.error('Something wrong')
     }
-
     setShowReportModal(false)
-    setReportCategory('')
-    setReportReason('')
   }
 
   const promptDelete = (id: number) => {
@@ -254,25 +280,58 @@ const IdeaCommentsDrawer = ({
           <OffcanvasTitle>Idea Details</OffcanvasTitle>
         </OffcanvasHeader>
         <ApiHandlingProvider apiCalls={[isLoadingReportCategories]}>
-          <Card key={formValues.id} className="border shadow-sm m-4">
+          <Card className="border shadow-sm m-4">
             <CardBody>
-              <Badge bg="primary-subtle" className="text-primary mb-2">
-                {formValues.idea_category || 'General'}
-              </Badge>
+              {/* Header Section with Badge and Dropdown */}
+              <div className="d-flex justify-content-between align-items-start mb-2">
+                <Badge bg="primary-subtle" className="text-primary">
+                  {formValues.idea_category || 'General'}
+                </Badge>
+
+                <Can perform="report.create">
+                  <Dropdown align="end">
+                    <Dropdown.Toggle
+                      as="div"
+                      role="button"
+                      className="p-0 text-muted border-0 shadow-none d-flex"
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <TbDotsVertical size={20} />
+                    </Dropdown.Toggle>
+
+                    <Dropdown.Menu className="shadow-sm border-light">
+                      <Dropdown.Item
+                        className="small text-danger"
+                        onClick={() =>
+                          openReportModal('post', formValues.id as number)
+                        }
+                      >
+                        Report post
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown>
+                </Can>
+              </div>
+
+              {/* Content Section */}
               <h4 className="mb-2">{formValues.title}</h4>
-              <p className="text-secondary small">{formValues.content}</p>
+              <p className="text-secondary small mb-3">{formValues.content}</p>
+
+              {/* Main Attachment Preview */}
+              <AttachmentPreview url={formValues.file_url} />
             </CardBody>
           </Card>
 
           <OffcanvasBody className="px-4">
             <div className="d-flex justify-content-between align-items-center mb-4">
               <h6 className="m-0 fw-bold text-muted">Discussion</h6>
-              <Button size="sm" onClick={() => setShowAddForm(!showAddForm)}>
-                {showAddForm ? 'Cancel' : 'Add Comment'}
-              </Button>
+              <Can perform="comment.manage">
+                <Button size="sm" onClick={() => setShowAddForm(!showAddForm)}>
+                  {showAddForm ? 'Cancel' : 'Add Comment'}
+                </Button>
+              </Can>
             </div>
 
-            {/* ADD COMMENT FORM */}
             {showAddForm && (
               <div className="mb-4 p-3 border rounded bg-light">
                 <FormControl
@@ -301,6 +360,7 @@ const IdeaCommentsDrawer = ({
                     onAddComment(commentText, commentAnonymous, commentFiles)
                     setShowAddForm(false)
                     setCommentText('')
+                    setCommentFiles([])
                   }}
                 >
                   Post Comment
@@ -319,7 +379,6 @@ const IdeaCommentsDrawer = ({
 
                 return (
                   <div key={comment.id} className="mb-4 pb-3 border-bottom">
-                    {/* HEADER */}
                     <div className="d-flex justify-content-between align-items-start">
                       <div>
                         <div className="fw-bold small">
@@ -331,78 +390,86 @@ const IdeaCommentsDrawer = ({
                           className="text-muted"
                           style={{ fontSize: '10px' }}
                         >
-                          {new Date(comment.created_at).toLocaleString()}
+                          {new Date(comment.created_at || '').toLocaleString()}
                         </div>
                       </div>
                       <div className="d-flex gap-1 align-items-center">
                         {isOwner && !isEditing && (
                           <>
-                            <Button
-                              variant="link"
-                              size="sm"
-                              className="p-0 text-primary"
-                              onClick={() => {
-                                setEditTargetId(comment.id as number)
-                                setEditText(comment.content)
-                                setEditAnonymous(!!comment.is_annonymous)
-                              }}
-                            >
-                              <TbEdit size={16} />
-                            </Button>
-                            <Button
-                              variant="link"
-                              size="sm"
-                              className="p-0 text-danger"
-                              onClick={() => promptDelete(comment.id as number)}
-                            >
-                              <TbTrash size={16} />
-                            </Button>
+                            <Can perform="comment.manage">
+                              <Button
+                                variant="link"
+                                size="sm"
+                                className="p-0 text-primary"
+                                onClick={() => handleEnterEditMode(comment)}
+                              >
+                                <TbEdit size={16} />
+                              </Button>
+                              <Button
+                                variant="link"
+                                size="sm"
+                                className="p-0 text-danger"
+                                onClick={() =>
+                                  promptDelete(comment.id as number)
+                                }
+                              >
+                                <TbTrash size={16} />
+                              </Button>
+                            </Can>
                           </>
                         )}
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="p-0 text-primary"
-                          onClick={() => setReplyTargetId(comment.id as number)}
-                        >
-                          <TbCornerDownRight size={16} />
-                        </Button>
-
-                        <Dropdown align="end">
-                          <Dropdown.Toggle
-                            as="div"
-                            role="button"
-                            className="p-0 text-muted border-0 shadow-none d-flex"
-                            style={{ cursor: 'pointer' }}
+                        <Can perform="comment.manage">
+                          <Button
+                            variant="link"
+                            size="sm"
+                            className="p-0 text-primary"
+                            onClick={() =>
+                              setReplyTargetId(comment.id as number)
+                            }
                           >
-                            <TbDotsVertical size={18} />
-                          </Dropdown.Toggle>
-                          <Dropdown.Menu className="shadow-sm border-light">
-                            <Dropdown.Item
-                              className="small text-danger"
-                              onClick={() =>
-                                openReportModal('comment', comment.id as number)
-                              }
+                            <TbCornerDownRight size={16} />
+                          </Button>
+                        </Can>
+
+                        <Can perform="report.create">
+                          <Dropdown align="end">
+                            <Dropdown.Toggle
+                              as="div"
+                              role="button"
+                              className="p-0 text-muted border-0 shadow-none d-flex"
+                              style={{ cursor: 'pointer' }}
                             >
-                              Report comment
-                            </Dropdown.Item>
-                            <Dropdown.Item
-                              className="small text-danger"
-                              onClick={() =>
-                                openReportModal(
-                                  'user',
-                                  comment.user_id as number,
-                                )
-                              }
-                            >
-                              Report user
-                            </Dropdown.Item>
-                          </Dropdown.Menu>
-                        </Dropdown>
+                              <TbDotsVertical size={18} />
+                            </Dropdown.Toggle>
+                            <Dropdown.Menu className="shadow-sm border-light">
+                              <Dropdown.Item
+                                className="small text-danger"
+                                onClick={() =>
+                                  openReportModal(
+                                    'comment',
+                                    comment.id as number,
+                                  )
+                                }
+                              >
+                                Report comment
+                              </Dropdown.Item>
+                              <Dropdown.Item
+                                className="small text-danger"
+                                onClick={() =>
+                                  openReportModal(
+                                    'user',
+                                    comment.user_id as number,
+                                  )
+                                }
+                              >
+                                Report user
+                              </Dropdown.Item>
+                            </Dropdown.Menu>
+                          </Dropdown>
+                        </Can>
                       </div>
                     </div>
 
-                    {/* EDIT OR CONTENT */}
                     {isEditing ? (
                       <div className="mt-2 p-2 border rounded bg-white">
                         <FormControl
@@ -412,12 +479,13 @@ const IdeaCommentsDrawer = ({
                           onChange={(e) => setEditText(e.target.value)}
                           className="mb-2 small"
                         />
+                        {/* Parent Comment Edit Anonymous Flag */}
                         <FormCheck
                           type="checkbox"
-                          label="Anonymous"
+                          label="Edit as anonymous"
                           checked={editAnonymous}
                           onChange={(e) => setEditAnonymous(e.target.checked)}
-                          className="small mb-2"
+                          className="mb-2 small"
                         />
                         <FileUploader
                           setFiles={setCommentFiles}
@@ -435,6 +503,7 @@ const IdeaCommentsDrawer = ({
                                 commentFiles,
                               )
                               setEditTargetId(null)
+                              setCommentFiles([])
                             }}
                           >
                             Save
@@ -442,7 +511,10 @@ const IdeaCommentsDrawer = ({
                           <Button
                             size="sm"
                             variant="light"
-                            onClick={() => setEditTargetId(null)}
+                            onClick={() => {
+                              setEditTargetId(null)
+                              setCommentFiles([])
+                            }}
                           >
                             Cancel
                           </Button>
@@ -475,20 +547,16 @@ const IdeaCommentsDrawer = ({
                                     ? 'Anonymous'
                                     : reply.user_info.name}
                                 </div>
-                                <div className="d-flex gap-1 align-items-center">
-                                  {isReplyOwner && !isEditingReply && (
-                                    <>
+                                {isReplyOwner && !isEditingReply && (
+                                  <div className="d-flex gap-1">
+                                    <Can perform="comment.manage">
                                       <Button
                                         variant="link"
                                         size="sm"
                                         className="p-0 text-primary"
-                                        onClick={() => {
-                                          setEditTargetId(reply.id as number)
-                                          setEditText(reply.content)
-                                          setEditAnonymous(
-                                            !!reply.is_annonymous,
-                                          )
-                                        }}
+                                        onClick={() =>
+                                          handleEnterEditMode(reply)
+                                        }
                                       >
                                         <TbEdit size={14} />
                                       </Button>
@@ -502,8 +570,10 @@ const IdeaCommentsDrawer = ({
                                       >
                                         <TbTrash size={14} />
                                       </Button>
-                                    </>
-                                  )}
+                                    </Can>
+                                  </div>
+                                )}
+                                <Can perform="report.create">
                                   <Dropdown align="end">
                                     <Dropdown.Toggle
                                       as="div"
@@ -538,7 +608,7 @@ const IdeaCommentsDrawer = ({
                                       </Dropdown.Item>
                                     </Dropdown.Menu>
                                   </Dropdown>
-                                </div>
+                                </Can>
                               </div>
                               {isEditingReply ? (
                                 <div className="mt-2">
@@ -551,7 +621,24 @@ const IdeaCommentsDrawer = ({
                                     }
                                     className="mb-1 small"
                                   />
-                                  <div className="d-flex gap-2">
+
+                                  {/* Reply Edit Anonymous Flag */}
+                                  <FormCheck
+                                    type="checkbox"
+                                    label="Edit as anonymous"
+                                    checked={editAnonymous}
+                                    onChange={(e) =>
+                                      setEditAnonymous(e.target.checked)
+                                    }
+                                    className="mb-2 small"
+                                  />
+
+                                  <FileUploader
+                                    setFiles={setCommentFiles}
+                                    files={commentFiles}
+                                    maxFileCount={1}
+                                  />
+                                  <div className="d-flex gap-2 mt-2">
                                     <Button
                                       size="sm"
                                       onClick={() => {
@@ -562,6 +649,7 @@ const IdeaCommentsDrawer = ({
                                           commentFiles,
                                         )
                                         setEditTargetId(null)
+                                        setCommentFiles([])
                                       }}
                                     >
                                       Save
@@ -569,18 +657,23 @@ const IdeaCommentsDrawer = ({
                                     <Button
                                       size="sm"
                                       variant="light"
-                                      onClick={() => setEditTargetId(null)}
+                                      onClick={() => {
+                                        setEditTargetId(null)
+                                        setCommentFiles([])
+                                      }}
                                     >
                                       Cancel
                                     </Button>
                                   </div>
                                 </div>
                               ) : (
-                                <div className="text-secondary mt-1">
-                                  {reply.content}
-                                </div>
+                                <>
+                                  <div className="text-secondary mt-1">
+                                    {reply.content}
+                                  </div>
+                                  <AttachmentPreview url={reply.file_url} />
+                                </>
                               )}
-                              <AttachmentPreview url={reply.file_url} />
                             </div>
                           )
                         })}
@@ -650,7 +743,7 @@ const IdeaCommentsDrawer = ({
 
       <EntityFormModal
         show={showReportModal}
-        title={reportType === 'comment' ? 'Report Comment' : 'Report User'}
+        title={`Report ${(reportType ?? '').charAt(0).toUpperCase() + (reportType ?? '').slice(1)}`}
         onHide={() => setShowReportModal(false)}
         onSubmit={handleReportSubmit}
         submitLabel="Submit Report"

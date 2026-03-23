@@ -36,6 +36,7 @@ import { useIdeaStore, useIdeaSpecificStore } from './store'
 import { useIdeaCategoryStore } from '../master/idea-category/store'
 import axios from '@/lib/axios'
 import toast from 'react-hot-toast'
+import Can from '@/components/Can'
 
 const AttachmentPreview = ({ url }: { url?: string | null }) => {
   if (!url) return null
@@ -328,15 +329,17 @@ export const IdeaFeedsPage = () => {
                               {item.thumbs_down || 0}
                             </span>
                           </div>
-                          <Button
-                            variant="outline-primary"
-                            size="sm"
-                            className="ms-auto d-inline-flex align-items-center gap-1"
-                            onClick={() => handleOpenComments(item)}
-                          >
-                            <TbMessageDots />
-                            Comments
-                          </Button>
+                          <Can perform="comment.view">
+                            <Button
+                              variant="outline-primary"
+                              size="sm"
+                              className="ms-auto d-inline-flex align-items-center gap-1"
+                              onClick={() => handleOpenComments(item)}
+                            >
+                              <TbMessageDots />
+                              Comments
+                            </Button>
+                          </Can>
                         </div>
                       </CardBody>
                     </Card>

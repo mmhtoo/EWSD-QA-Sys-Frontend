@@ -113,7 +113,7 @@ export const UserListPage = () => {
         header: 'Actions',
         cell: ({ row }: any) => (
           <div className="d-flex gap-1">
-            <Can perform="user.detail">
+            <Can perform="user.manage">
               <Button
                 variant="light"
                 size="sm"
@@ -127,7 +127,7 @@ export const UserListPage = () => {
                 <TbEye className="fs-lg" />
               </Button>
             </Can>
-            <Can perform="user.update">
+            <Can perform="user.manage">
               <Button
                 variant="light"
                 size="sm"
@@ -213,7 +213,7 @@ export const UserListPage = () => {
         title="Users"
         subtitle="Master"
         actions={
-          <Can perform="user.create">
+          <Can perform="user.manage">
             <Button
               variant="primary"
               onClick={() => {

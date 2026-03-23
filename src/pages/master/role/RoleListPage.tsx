@@ -30,6 +30,7 @@ import { useRolePermissionAttachStore, useRoleStore } from './store'
 import { usePermissionStore } from '../permission/store'
 import ApiHandlingProvider from '@/utils/ApiHandleProvider'
 import TblSkeletonLoading from '@/components/TblSkeletonLoading'
+import Can from '@/components/Can'
 
 const roleFormSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -120,48 +121,67 @@ export const RoleListPage = () => {
         header: 'Actions',
         cell: ({ row }: any) => (
           <div className="d-flex gap-1 align-items-center">
-            <Button
-              variant="light"
-              size="sm"
-              className="btn-icon rounded-circle"
-              onClick={() => {
-                setActiveRole(row.original)
-                setShowDetailModal(true)
-              }}
-            >
-              <TbEye className="fs-lg" />
-            </Button>
-            <Button
-              variant="light"
-              size="sm"
-              className="btn-icon rounded-circle"
-              onClick={async () => {
-                fetchById(row.original.id)
+            <Can perform="role.manage">
+              <Button
+                variant="light"
+                size="sm"
+                className="btn-icon rounded-circle"
+                onClick={() => {
+                  setActiveRole(row.original)
+                  setShowDetailModal(true)
+                }}
+              >
+                <TbEye className="fs-lg" />
+              </Button>
+            </Can>
+            <Can perform="role.manage">
+              <Button
+                variant="light"
+                size="sm"
+                className="btn-icon rounded-circle"
+                onClick={() => {
+                  setActiveRole(row.original)
+                  setShowDetailModal(true)
+                }}
+              >
+                <TbEye className="fs-lg" />
+              </Button>
+            </Can>
+            <Can perform="role.manage">
+              <Button
+                variant="light"
+                size="sm"
+                className="btn-icon rounded-circle"
+                onClick={async () => {
+                  fetchById(row.original.id)
 
-                setActiveRole(row.original)
-                await fetchById(row.original.id)
-                setShowFormModal(true)
-              }}
-            >
-              <TbEdit className="fs-lg" />
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              className="btn-icon rounded-circle"
-              disabled={row.original.is_in_use}
-              onClick={() => {
-                setActiveRole(row.original)
-                setShowDeleteModal(true)
-              }}
-            >
-              <TbTrash className="fs-lg" />
-            </Button>
-            {row.original.is_in_use && (
-              <Badge bg="secondary-subtle" className="text-secondary">
-                In use
-              </Badge>
-            )}
+                  setActiveRole(row.original)
+                  await fetchById(row.original.id)
+                  setShowFormModal(true)
+                }}
+              >
+                <TbEdit className="fs-lg" />
+              </Button>
+            </Can>
+            <Can perform="role.manage">
+              <Button
+                variant="danger"
+                size="sm"
+                className="btn-icon rounded-circle"
+                disabled={row.original.is_in_use}
+                onClick={() => {
+                  setActiveRole(row.original)
+                  setShowDeleteModal(true)
+                }}
+              >
+                <TbTrash className="fs-lg" />
+              </Button>
+              {row.original.is_in_use && (
+                <Badge bg="secondary-subtle" className="text-secondary">
+                  In use
+                </Badge>
+              )}
+            </Can>
           </div>
         ),
       },
@@ -213,16 +233,18 @@ export const RoleListPage = () => {
         title="Roles"
         subtitle="Master"
         actions={
-          <Button
-            variant="primary"
-            onClick={() => {
-              setActiveRole(null)
-              reset({ name: '', description: '', permissions: [] })
-              setShowFormModal(true)
-            }}
-          >
-            <TbPlus className="me-1" /> New Role
-          </Button>
+          <Can perform="role.manage">
+            <Button
+              variant="primary"
+              onClick={() => {
+                setActiveRole(null)
+                reset({ name: '', description: '', permissions: [] })
+                setShowFormModal(true)
+              }}
+            >
+              <TbPlus className="me-1" /> New Role
+            </Button>
+          </Can>
         }
       >
         <ApiHandlingProvider
