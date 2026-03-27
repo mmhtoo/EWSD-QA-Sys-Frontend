@@ -23,7 +23,17 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const requestUrl = String(error.config?.url ?? '')
+    const isLoginRequest = /\/login\/?$/.test(requestUrl)
+    const isAlreadyOnLoginPage =
+      window.location.pathname === AppRoutes.LOGIN.path ||
+      window.location.pathname === AppRoutes.LOGIN.fullPath
+
+    if (
+      error.response?.status === 401 &&
+      !isLoginRequest &&
+      !isAlreadyOnLoginPage
+    ) {
       localStorage.removeItem('token')
       window.location.href = AppRoutes.LOGIN.path
     }

@@ -22,7 +22,7 @@ export default function DashboardChartCard({
   type,
   hasData,
   height = 320,
-  emptyMessage = 'No data available for selected date range.',
+  emptyMessage = 'No data available for selected filters.',
 }: DashboardChartCardProps) {
   return (
     <ComponentCard title={title}>
