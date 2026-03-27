@@ -16,6 +16,55 @@ export type DashboardChartData = {
   academicYearId: string | number | 'all'
 }
 
+export type PopularIdea = {
+  id: number
+  title: string
+  content: string
+  comments: number
+  likes: number
+  score: number
+  isAnonymous: boolean
+  createdAt: Date
+}
+
+type RawPopularIdea = {
+  id: number | string
+  title?: string
+  content?: string
+  comments_count?: number | string
+  thumbs_up?: number | string
+  score?: number | string
+  is_annonymous?: number | boolean
+  is_anonymous?: number | boolean
+  created_at?: string
+}
+
+type RawPopularIdeasResponse = {
+  data?: RawPopularIdea[]
+}
+
+type RawExceptionReportsResponse = {
+  ideas_without_comments?: number | string
+  anonymous_ideas?: number | string
+  anonymous_comment?: number | string
+  data?: {
+    ideas_without_comments?: number | string
+    anonymous_ideas?: number | string
+    anonymous_comment?: number | string
+  }
+}
+
+type RawContributorsCountRow = {
+  id?: number | string
+  name?: string
+  total_users?: number | string
+  active_users?: number | string
+}
+
+type RawContributorsCountsResponse = {
+  data?: RawContributorsCountRow[]
+}
+
 const DASHBOARD_QUERY_SCOPE = 'dashboard'
 
 export const dashboardQueryKeys = {
@@ -36,6 +85,20 @@ export const dashboardQueryKeys = {
     [
       DASHBOARD_QUERY_SCOPE,
       'reports-by-categories',
+      academicYear ?? 'all',
+    ] as const,
+  popularIdeas: (academicYear?: string) =>
+    [DASHBOARD_QUERY_SCOPE, 'popular-ideas', academicYear ?? 'all'] as const,
+  exceptionReports: (academicYear?: string) =>
+    [
+      DASHBOARD_QUERY_SCOPE,
+      'exception-reports',
+      academicYear ?? 'all',
+    ] as const,
+  contributorsCounts: (academicYear?: string) =>
+    [
+      DASHBOARD_QUERY_SCOPE,
+      'contributors-counts',
       academicYear ?? 'all',
     ] as const,
 }
@@ -106,6 +169,78 @@ const mapCountEntries = (counts: Record<string, number>) => {
     )
 }
 
+const toNumber = (value: unknown): number => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const parseApiDate = (value: unknown): Date => {
+  if (value instanceof Date) return value
+  const raw = String(value ?? '')
+  const normalized = raw.includes(' ') ? raw.replace(' ', 'T') : raw
+  const date = new Date(normalized)
+  return Number.isNaN(date.getTime()) ? new Date() : date
+}
+
+const normalizePopularIdeas = (
+  payload: RawPopularIdeasResponse,
+): PopularIdea[] => {
+  const rows = Array.isArray(payload?.data) ? payload.data : []
+
+  return rows.map((row) => {
+    const comments = toNumber(row.comments_count)
+    const likes = toNumber(row.thumbs_up)
+    const score = toNumber(row.score) || comments + likes
+
+    return {
+      id: toNumber(row.id),
+      title: row.title ?? 'Untitled Idea',
+      content: row.content ?? '',
+      comments,
+      likes,
+      score,
+      isAnonymous: Boolean(row.is_annonymous ?? row.is_anonymous),
+      createdAt: parseApiDate(row.created_at),
+    }
+  })
+}
+
+const normalizeExceptionReports = (
+  payload: RawExceptionReportsResponse,
+): number[] => {
+  const source = payload.data ?? payload
+
+  return [
+    toNumber(source.ideas_without_comments),
+    toNumber(source.anonymous_ideas),
+    toNumber(source.anonymous_comment),
+  ]
+}
+
+const normalizeContributorsCounts = (
+  payload: RawContributorsCountsResponse,
+): DashboardChartData => {
+  const rows = Array.isArray(payload?.data) ? payload.data : []
+
+  const points = rows
+    .map((row) => ({
+      label: String(row.name ?? 'Unknown Department'),
+      value: toNumber(row.total_users ?? row.active_users),
+    }))
+    .sort(
+      (left, right) =>
+        right.value - left.value || left.label.localeCompare(right.label),
+    )
+
+  return {
+    labels: points.map((point) => point.label),
+    values: points.map((point) => point.value),
+    filterApplied: false,
+    academicYearId: 'all',
+  }
+}
+
 const normalizeChartResponse = (
   payload: RawChartApiResponse,
   countKeys: string[],
@@ -142,19 +277,11 @@ export const useIdeasByDepartmentsQuery = (academicYear?: string) => {
     queryKey: dashboardQueryKeys.ideasByDepartments(academicYear),
     queryFn: async () => {
       const payload = await fetchFromFirstAvailableRoute<RawChartApiResponse>(
-        [
-          '/reports/ideas-by-departments',
-          '/reports/ideas-by-department',
-          '/ideas-by-departments',
-          '/ideas-by-department',
-        ],
+        ['/ideas-by-departments'],
         academicYear,
       )
 
-      return normalizeChartResponse(payload, [
-        'ideas_by_departments',
-        'ideas_by_department',
-      ])
+      return normalizeChartResponse(payload, ['ideas_by_department'])
     },
   })
 }
@@ -164,14 +291,11 @@ export const useIdeasByCategoriesQuery = (academicYear?: string) => {
     queryKey: dashboardQueryKeys.ideasByCategories(academicYear),
     queryFn: async () => {
       const payload = await fetchFromFirstAvailableRoute<RawChartApiResponse>(
-        ['/reports/ideas-by-categories', '/ideas-by-categories'],
+        ['/ideas-by-categories'],
         academicYear,
       )
 
-      return normalizeChartResponse(payload, [
-        'ideas_by_categories',
-        'ideas_by_category',
-      ])
+      return normalizeChartResponse(payload, ['ideas_by_categories'])
     },
   })
 }
@@ -181,14 +305,56 @@ export const useReportsByCategoriesQuery = (academicYear?: string) => {
     queryKey: dashboardQueryKeys.reportsByCategories(academicYear),
     queryFn: async () => {
       const payload = await fetchFromFirstAvailableRoute<RawChartApiResponse>(
-        ['/reports/reports-by-categories', '/reports-by-categories'],
+        ['/reports-by-categories'],
         academicYear,
       )
 
-      return normalizeChartResponse(payload, [
-        'reports_by_categories',
-        'reports_by_category',
-      ])
+      return normalizeChartResponse(payload, ['reports_by_categories'])
+    },
+  })
+}
+
+export const usePopularIdeasQuery = (academicYear?: string) => {
+  return useQuery({
+    queryKey: dashboardQueryKeys.popularIdeas(academicYear),
+    queryFn: async () => {
+      const payload =
+        await fetchFromFirstAvailableRoute<RawPopularIdeasResponse>(
+          ['/popular-ideas'],
+          academicYear,
+        )
+
+      return normalizePopularIdeas(payload)
+    },
+  })
+}
+
+export const useExceptionReportsQuery = (academicYear?: string) => {
+  return useQuery({
+    queryKey: dashboardQueryKeys.exceptionReports(academicYear),
+    queryFn: async () => {
+      const payload =
+        await fetchFromFirstAvailableRoute<RawExceptionReportsResponse>(
+          ['/exceptions-reports'],
+          academicYear,
+        )
+
+      return normalizeExceptionReports(payload)
+    },
+  })
+}
+
+export const useContributorsCountsQuery = (academicYear?: string) => {
+  return useQuery({
+    queryKey: dashboardQueryKeys.contributorsCounts(academicYear),
+    queryFn: async () => {
+      const payload =
+        await fetchFromFirstAvailableRoute<RawContributorsCountsResponse>(
+          ['/contributors-counts'],
+          academicYear,
+        )
+
+      return normalizeContributorsCounts(payload)
     },
   })
 }
