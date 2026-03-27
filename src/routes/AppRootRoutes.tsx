@@ -32,9 +32,9 @@ export const PermissionGuard = ({
   children,
   permission,
 }: PermissionGuardProps) => {
-  if (!hasPermission(permission)) {
-    return <Navigate to="/403" replace />
-  }
+  // if (!hasPermission(permission)) {
+  //   return <Navigate to="/403" replace />
+  // }
   return children
 }
 

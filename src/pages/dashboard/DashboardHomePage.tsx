@@ -16,24 +16,46 @@ import {
 import DashboardChartCard from './components/DashboardChartCard'
 import DashboardFilters from './components/DashboardFilters'
 import {
-  formatDateLabel,
   getCommentCountsByIdea,
   getFilteredComments,
   getFilteredIdeas,
   getFilteredReactions,
-  getFilteredReports,
   getFilteredUsers,
   getIdeaModerationSignals,
-  getIdeasByCategoriesSeries,
-  getIdeasByDepartmentSeries,
   getLikeCountsByIdea,
-  getReportsByCategoriesSeries,
   getUsersByDepartmentsSeries,
-  type DateRange,
 } from './helpers'
+import {
+  toAcademicYearPreviewLabel,
+  useDashboardAcademicYearsQuery,
+  useIdeasByCategoriesQuery,
+  useIdeasByDepartmentsQuery,
+  useReportsByCategoriesQuery,
+} from './queries'
+
+const getChartEmptyMessage = (
+  isLoading: boolean,
+  isError: boolean,
+  error: unknown,
+): string => {
+  if (isLoading) return 'Loading chart data...'
+  if (isError) {
+    return error instanceof Error
+      ? `Unable to load chart data: ${error.message}`
+      : 'Unable to load chart data.'
+  }
+  return 'No data available for selected filters.'
+}
+
+const EMPTY_CHART_DATA = {
+  labels: [],
+  values: [],
+  filterApplied: false,
+  academicYearId: 'all' as const,
+}
 
 export const DashboardHomePage = () => {
-  const [dateRange, setDateRange] = useState<DateRange>([null, null])
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState('')
   const [showIdeaDetailModal, setShowIdeaDetailModal] = useState(false)
   const [selectedPopularIdea, setSelectedPopularIdea] = useState<{
     id: number
@@ -45,47 +67,54 @@ export const DashboardHomePage = () => {
     isAnonymous: boolean
     createdAt: Date
   } | null>(null)
-  const [rangeStart, rangeEnd] = dateRange
 
-  const filteredIdeas = useMemo(
-    () => getFilteredIdeas(rangeStart, rangeEnd),
-    [rangeStart, rangeEnd],
+  const selectedAcademicYearParam = selectedAcademicYear || undefined
+
+  const { data: academicYears = [] } = useDashboardAcademicYearsQuery()
+
+  const ideasByDepartmentsQuery = useIdeasByDepartmentsQuery(
+    selectedAcademicYearParam,
   )
 
-  const filteredUsers = useMemo(
-    () => getFilteredUsers(rangeStart, rangeEnd),
-    [rangeStart, rangeEnd],
+  const ideasByCategoriesQuery = useIdeasByCategoriesQuery(
+    selectedAcademicYearParam,
   )
 
-  const filteredComments = useMemo(
-    () => getFilteredComments(rangeStart, rangeEnd),
-    [rangeStart, rangeEnd],
+  const reportsByCategoriesQuery = useReportsByCategoriesQuery(
+    selectedAcademicYearParam,
   )
 
-  const filteredReactions = useMemo(
-    () => getFilteredReactions(rangeStart, rangeEnd),
-    [rangeStart, rangeEnd],
+  const selectedAcademicYearEntity = useMemo(
+    () =>
+      academicYears.find((year) => String(year.id) === selectedAcademicYear) ??
+      null,
+    [academicYears, selectedAcademicYear],
   )
 
-  const filteredReports = useMemo(
-    () => getFilteredReports(rangeStart, rangeEnd),
-    [rangeStart, rangeEnd],
+  const academicYearOptions = useMemo(
+    () =>
+      academicYears.map((year) => ({
+        value: String(year.id),
+        label: toAcademicYearPreviewLabel(year),
+      })),
+    [academicYears],
   )
 
-  const ideasByDepartment = useMemo(
-    () => getIdeasByDepartmentSeries(filteredIdeas),
-    [filteredIdeas],
-  )
+  const selectedAcademicYearPreview = selectedAcademicYearEntity
+    ? `Preview: ${toAcademicYearPreviewLabel(selectedAcademicYearEntity)}`
+    : 'Preview: all academic years'
 
-  const ideasByCategories = useMemo(
-    () => getIdeasByCategoriesSeries(filteredIdeas),
-    [filteredIdeas],
-  )
+  const filteredIdeas = useMemo(() => getFilteredIdeas(null, null), [])
 
-  const reportsByCategories = useMemo(
-    () => getReportsByCategoriesSeries(filteredReports),
-    [filteredReports],
-  )
+  const filteredUsers = useMemo(() => getFilteredUsers(null, null), [])
+
+  const filteredComments = useMemo(() => getFilteredComments(null, null), [])
+
+  const filteredReactions = useMemo(() => getFilteredReactions(null, null), [])
+
+  const ideasByDepartment = ideasByDepartmentsQuery.data ?? EMPTY_CHART_DATA
+  const ideasByCategories = ideasByCategoriesQuery.data ?? EMPTY_CHART_DATA
+  const reportsByCategories = reportsByCategoriesQuery.data ?? EMPTY_CHART_DATA
 
   const usersByDepartments = useMemo(
     () => getUsersByDepartmentsSeries(filteredUsers),
@@ -181,30 +210,19 @@ export const DashboardHomePage = () => {
     [ideaModerationSignals],
   )
 
-  const selectedRangeLabel = useMemo(() => {
-    if (!rangeStart && !rangeEnd) return 'Showing all dates'
-    if (rangeStart && rangeEnd) {
-      return `${formatDateLabel(rangeStart)} - ${formatDateLabel(rangeEnd)}`
-    }
-    if (rangeStart) return `From ${formatDateLabel(rangeStart)}`
-    return `Until ${formatDateLabel(rangeEnd as Date)}`
-  }, [rangeStart, rangeEnd])
-
-  const hasDateFilter = Boolean(rangeStart || rangeEnd)
+  const hasAcademicYearFilter = Boolean(selectedAcademicYear)
 
   return (
     <Container fluid>
       <DashboardPage title="Dashboard" subtitle="QA" showBreadcrumb={false}>
         <ComponentCard title="Reporting Filters" className="mb-3">
           <DashboardFilters
-            startDate={rangeStart}
-            endDate={rangeEnd}
-            hasDateFilter={hasDateFilter}
-            onStartDateChange={(startDate) =>
-              setDateRange([startDate, rangeEnd])
-            }
-            onEndDateChange={(endDate) => setDateRange([rangeStart, endDate])}
-            onReset={() => setDateRange([null, null])}
+            selectedAcademicYear={selectedAcademicYear}
+            academicYearOptions={academicYearOptions}
+            selectedAcademicYearPreview={selectedAcademicYearPreview}
+            hasAcademicYearFilter={hasAcademicYearFilter}
+            onAcademicYearChange={setSelectedAcademicYear}
+            onReset={() => setSelectedAcademicYear('')}
           />
         </ComponentCard>
 
@@ -212,33 +230,48 @@ export const DashboardHomePage = () => {
           <Col xl={4} md={6}>
             <DashboardChartCard
               title="Ideas by Department"
-              chartKey={`ideas-department-${ideasByDepartment.labels.join('|')}-${ideasByDepartment.values.join('|')}`}
+              chartKey={`ideas-department-${selectedAcademicYear || 'all'}-${ideasByDepartment.labels.join('|')}-${ideasByDepartment.values.join('|')}`}
               options={ideasByDepartmentOptions}
               series={ideasByDepartmentOptions.series ?? []}
               type="bar"
               hasData={ideasByDepartment.values.length > 0}
+              emptyMessage={getChartEmptyMessage(
+                ideasByDepartmentsQuery.isLoading,
+                ideasByDepartmentsQuery.isError,
+                ideasByDepartmentsQuery.error,
+              )}
             />
           </Col>
 
           <Col xl={4} md={6}>
             <DashboardChartCard
               title="Ideas by Categories"
-              chartKey={`ideas-categories-${ideasByCategories.labels.join('|')}-${ideasByCategories.values.join('|')}`}
+              chartKey={`ideas-categories-${selectedAcademicYear || 'all'}-${ideasByCategories.labels.join('|')}-${ideasByCategories.values.join('|')}`}
               options={ideasByCategoriesOptions}
               series={ideasByCategoriesOptions.series ?? []}
               type="bar"
               hasData={ideasByCategories.values.length > 0}
+              emptyMessage={getChartEmptyMessage(
+                ideasByCategoriesQuery.isLoading,
+                ideasByCategoriesQuery.isError,
+                ideasByCategoriesQuery.error,
+              )}
             />
           </Col>
 
           <Col xl={4} md={12}>
             <DashboardChartCard
               title="Reports by Categories"
-              chartKey={`reports-categories-${reportsByCategories.labels.join('|')}-${reportsByCategories.values.join('|')}`}
+              chartKey={`reports-categories-${selectedAcademicYear || 'all'}-${reportsByCategories.labels.join('|')}-${reportsByCategories.values.join('|')}`}
               options={reportsByCategoriesOptions}
               series={reportsByCategoriesOptions.series ?? []}
               type="donut"
               hasData={reportsByCategories.values.length > 0}
+              emptyMessage={getChartEmptyMessage(
+                reportsByCategoriesQuery.isLoading,
+                reportsByCategoriesQuery.isError,
+                reportsByCategoriesQuery.error,
+              )}
             />
           </Col>
         </Row>
@@ -299,7 +332,7 @@ export const DashboardHomePage = () => {
                 ) : (
                   <div className="h-100 d-flex align-items-center justify-content-center text-center">
                     <p className="text-muted mb-0">
-                      No data available for selected date range.
+                      No data available for selected filters.
                     </p>
                   </div>
                 )}
@@ -344,10 +377,6 @@ export const DashboardHomePage = () => {
             />
           )}
         </EntityDetailModal>
-
-        <small className="text-muted mt-3 d-inline-block">
-          {selectedRangeLabel}
-        </small>
       </DashboardPage>
     </Container>
   )

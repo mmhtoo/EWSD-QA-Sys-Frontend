@@ -1,56 +1,46 @@
 import { Button, Col, FormLabel, Row } from 'react-bootstrap'
-import Flatpickr from 'react-flatpickr'
+
+import SelectFilter, {
+  type SelectOption,
+} from '@/components/common/SelectFilter'
 
 type DashboardFiltersProps = {
-  startDate: Date | null
-  endDate: Date | null
-  hasDateFilter: boolean
-  onStartDateChange: (date: Date | null) => void
-  onEndDateChange: (date: Date | null) => void
+  selectedAcademicYear: string
+  academicYearOptions: SelectOption[]
+  selectedAcademicYearPreview: string
+  hasAcademicYearFilter: boolean
+  onAcademicYearChange: (value: string) => void
   onReset: () => void
 }
 
 export default function DashboardFilters({
-  startDate,
-  endDate,
-  hasDateFilter,
-  onStartDateChange,
-  onEndDateChange,
+  selectedAcademicYear,
+  academicYearOptions,
+  selectedAcademicYearPreview,
+  hasAcademicYearFilter,
+  onAcademicYearChange,
   onReset,
 }: DashboardFiltersProps) {
   return (
     <Row className="g-3 align-items-end">
-      <Col lg={4} md={6}>
-        <FormLabel className="fw-semibold">From Date</FormLabel>
-        <Flatpickr
-          className="form-control"
-          value={startDate ?? undefined}
-          options={{ dateFormat: 'd M, Y' }}
-          onChange={(selectedDates: Date[]) => {
-            onStartDateChange(selectedDates[0] ?? null)
-          }}
-          placeholder="Select start date"
+      <Col lg={6} md={8}>
+        <FormLabel className="fw-semibold">Academic Year</FormLabel>
+        <SelectFilter
+          value={selectedAcademicYear}
+          onChange={onAcademicYearChange}
+          options={academicYearOptions}
+          placeholder="All academic years"
         />
-      </Col>
-
-      <Col lg={4} md={6}>
-        <FormLabel className="fw-semibold">To Date</FormLabel>
-        <Flatpickr
-          className="form-control"
-          value={endDate ?? undefined}
-          options={{ dateFormat: 'd M, Y' }}
-          onChange={(selectedDates: Date[]) => {
-            onEndDateChange(selectedDates[0] ?? null)
-          }}
-          placeholder="Select end date"
-        />
+        <small className="text-muted d-block mt-2">
+          {selectedAcademicYearPreview}
+        </small>
       </Col>
 
       <Col lg="auto" md="auto">
         <Button
           variant="outline-secondary"
           onClick={onReset}
-          disabled={!hasDateFilter}
+          disabled={!hasAcademicYearFilter}
         >
           Reset
         </Button>
