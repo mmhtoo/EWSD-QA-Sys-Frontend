@@ -139,19 +139,6 @@ export const RoleListPage = () => {
                 variant="light"
                 size="sm"
                 className="btn-icon rounded-circle"
-                onClick={() => {
-                  setActiveRole(row.original)
-                  setShowDetailModal(true)
-                }}
-              >
-                <TbEye className="fs-lg" />
-              </Button>
-            </Can>
-            <Can perform="role.manage">
-              <Button
-                variant="light"
-                size="sm"
-                className="btn-icon rounded-circle"
                 onClick={async () => {
                   fetchById(row.original.id)
 
