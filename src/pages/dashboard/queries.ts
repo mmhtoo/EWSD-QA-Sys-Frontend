@@ -72,7 +72,7 @@ export const dashboardQueryKeys = {
   ideasByDepartments: (academicYear?: string) =>
     [
       DASHBOARD_QUERY_SCOPE,
-      'ideas-by-departments',
+      'ideas-by-department',
       academicYear ?? 'all',
     ] as const,
   ideasByCategories: (academicYear?: string) =>
@@ -277,7 +277,7 @@ export const useIdeasByDepartmentsQuery = (academicYear?: string) => {
     queryKey: dashboardQueryKeys.ideasByDepartments(academicYear),
     queryFn: async () => {
       const payload = await fetchFromFirstAvailableRoute<RawChartApiResponse>(
-        ['/ideas-by-departments'],
+        ['/ideas-by-department'],
         academicYear,
       )
 

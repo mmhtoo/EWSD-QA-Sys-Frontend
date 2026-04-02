@@ -9,6 +9,7 @@ import { TbMenu4 } from 'react-icons/tb'
 import logoDark from '@/assets/images/ewsd-gp4-logo-dark.svg'
 import logoSm from '@/assets/images/ewsd-gp4-icon.svg'
 import logo from '@/assets/images/ewsd-gp4-logo-light.svg'
+import MonochromeThemeModeToggler from './components/MonoChromeTheme'
 
 const Topbar = () => {
   const { sidenav, changeSideNavSize, showBackdrop } = useLayoutContext()
@@ -58,6 +59,7 @@ const Topbar = () => {
         </div>
 
         <div className="d-flex align-items-center gap-2">
+          <MonochromeThemeModeToggler/>
           <LanguageDropdown />
           <UserProfile />
         </div>
