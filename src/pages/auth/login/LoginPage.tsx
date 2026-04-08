@@ -46,7 +46,7 @@ export function LoginPage() {
     },
     onSuccess: (data) => {
       localStorage.setItem('token', JSON.stringify(data))
-      navigate(AppRoutes.DASHBOARD_HOME.fullPath)
+      navigate(AppRoutes.STARTER_HOME.fullPath)
     },
   })
 

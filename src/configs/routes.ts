@@ -7,6 +7,10 @@ export const AppRoutes = {
   DASHBOARD_BASE: {
     path: 'd',
   },
+  STARTER_HOME: {
+    path: 'start',
+    fullPath: '/d/start',
+  },
   DASHBOARD_HOME: {
     path: 'dashboard',
     fullPath: '/d/dashboard',
