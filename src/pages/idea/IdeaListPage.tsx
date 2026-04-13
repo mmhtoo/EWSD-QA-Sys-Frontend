@@ -285,7 +285,8 @@ export const IdeaListPage = () => {
       {
         id: 'actions',
         header: 'Actions',
-        cell: ({ row }: any) => (
+        cell: ({ row }: any) => {
+          return(
           <div className="d-flex gap-1">
             <Can perform="idea.export.zip">
               <Button
@@ -317,7 +318,7 @@ export const IdeaListPage = () => {
               </Button>
             </Can>
 
-            {JSON.parse(localStorage.getItem('token')!)?.user.user_id ===
+            {JSON.parse(localStorage.getItem('token')!)?.user.id ===
               row.original.user_info.id && (
               <Can perform="idea.update">
                 <Button
@@ -364,7 +365,7 @@ export const IdeaListPage = () => {
               </Can>
             )}
 
-            {JSON.parse(localStorage.getItem('token')!)?.user.user_id ===
+            {JSON.parse(localStorage.getItem('token')!)?.user.id ===
               row.original.user_info.id && (
               <Can perform="idea.delete">
                 <Button
@@ -381,7 +382,7 @@ export const IdeaListPage = () => {
               </Can>
             )}
           </div>
-        ),
+        )},
       },
     ],
     [categories, reset, fetchById, ideaStore, zipProcessingId],

@@ -709,6 +709,7 @@ const IdeaCommentsDrawer = ({
                             onClick={() =>
                               handleSubmitReply(comment.id as number)
                             }
+                            disabled={replyText.length === 0}
                           >
                             Reply
                           </Button>

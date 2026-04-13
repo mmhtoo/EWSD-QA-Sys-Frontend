@@ -100,19 +100,30 @@ export const IdeaFeedsPage = () => {
   }, [selectedYearId])
 
   useEffect(() => {
+    console.log('🚀 ~ IdeaFeedsPage ~ academicYears:', academicYears)
     if (academicYears.length > 0 && !selectedYearId) {
-      setSelectedYearId(academicYears[academicYears.length - 1].id as number)
+      setSelectedYearId(
+        (academicYears.find((data: any) => data.is_active === 1)?.id ??
+          1) as number,
+      )
     }
   }, [academicYears])
 
   const handleReaction = async (
     ideaId: number,
     type: 'thumbs_up' | 'thumbs_down',
+    item: any,
   ) => {
     try {
-      await axios.post(`/ideas/${ideaId}/reactions`, {
-        reaction_type: type,
-      })
+      if (item.my_reaction === 'thumbs_up') {
+        await axios.delete(`/ideas/${ideaId}/reactions`)
+      } else if (item.my_reaction === 'thumbs_down') {
+        await axios.delete(`/ideas/${ideaId}/reactions`)
+      } else {
+        await axios.post(`/ideas/${ideaId}/reactions`, {
+          reaction_type: type,
+        })
+      }
 
       fetchIdeas()
     } catch (error) {
@@ -309,7 +320,7 @@ export const IdeaFeedsPage = () => {
                             <span
                               className="cursor-pointer"
                               onClick={() =>
-                                handleReaction(item.id, 'thumbs_up')
+                                handleReaction(item.id, 'thumbs_up', item)
                               }
                             >
                               <TbThumbUp
@@ -320,7 +331,7 @@ export const IdeaFeedsPage = () => {
                             <span
                               className="cursor-pointer"
                               onClick={() =>
-                                handleReaction(item.id, 'thumbs_down')
+                                handleReaction(item.id, 'thumbs_down', item)
                               }
                             >
                               <TbThumbDown

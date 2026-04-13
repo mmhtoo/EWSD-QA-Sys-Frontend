@@ -43,6 +43,7 @@ export const AppRootRoutes: RouteObject[] = [
     path: '/',
     element: <Navigate to={AppRoutes.LOGIN.path} replace />,
   },
+
   {
     path: '/403',
     element: <Error403 />,
@@ -72,6 +73,10 @@ export const AppRootRoutes: RouteObject[] = [
                 <DashboardHomePage />
               </PermissionGuard>
             ),
+          },
+          {
+            path: AppRoutes.STARTER_HOME.path,
+            element: <p>This is Starter Page.</p>,
           },
           {
             path: AppRoutes.DASHBOARD_HOME.path,
