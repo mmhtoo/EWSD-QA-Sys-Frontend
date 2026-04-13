@@ -7,6 +7,12 @@ interface CrudState<T> {
   activeItem: T | any | null
   formValues: Partial<T>
   payload: any
+  pagination: {
+    current_page: number
+    per_page: number
+    total: number
+    last_page: number
+  } | null
 
   isLoading: boolean
   error: string | null
@@ -36,6 +42,7 @@ export const createCrudStore = <T extends { id?: string | number }>(
     activeItem: null,
     formValues: {},
     payload: null,
+    pagination: null,
 
     isLoading: false,
     error: null,
@@ -46,8 +53,59 @@ export const createCrudStore = <T extends { id?: string | number }>(
       set({ isLoading: true, error: null })
       try {
         const { data } = await axios.get(`${endpoint}${params}`)
+
+        const collection = Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data?.data?.data)
+            ? data.data.data
+            : Array.isArray(data)
+              ? data
+              : []
+
+        const pagination = data?.pagination
+          ? {
+              current_page: Number(data.pagination.current_page || 1),
+              per_page: Number(data.pagination.per_page || 10),
+              total: Number(data.pagination.total || collection.length),
+              last_page: Number(data.pagination.last_page || 1),
+            }
+          : null
+
+        let allItems = collection
+
+        const hasExplicitPage = /(^|[?&])page=/.test(params)
+        if (
+          pagination &&
+          !hasExplicitPage &&
+          pagination.last_page > 1 &&
+          pagination.current_page === 1
+        ) {
+          const extraRequests = Array.from(
+            { length: pagination.last_page - 1 },
+            (_, index) => {
+              const page = index + 2
+              const separator = params.includes('?') ? '&' : '?'
+              const pageParams = `${params}${separator}page=${page}&per_page=${pagination.per_page}`
+              return axios.get(`${endpoint}${pageParams}`)
+            },
+          )
+
+          const extraResponses = await Promise.all(extraRequests)
+
+          const extraItems = extraResponses.flatMap((response) => {
+            const payload = response.data
+            if (Array.isArray(payload?.data)) return payload.data
+            if (Array.isArray(payload?.data?.data)) return payload.data.data
+            if (Array.isArray(payload)) return payload
+            return []
+          })
+
+          allItems = [...collection, ...extraItems]
+        }
+
         set({
-          items: data?.data?.current_page === 1 ? data?.data?.data : data?.data,
+          items: allItems,
+          pagination,
           isLoading: false,
         })
       } catch (err: any) {
@@ -62,7 +120,8 @@ export const createCrudStore = <T extends { id?: string | number }>(
       set({ isLoading: true, error: null })
       try {
         const { data } = await axios.get(`${endpoint}/${id}`)
-        set({ activeItem: data?.data, formValues: data, isLoading: false })
+        const entity = data?.data ?? data
+        set({ activeItem: entity, formValues: entity, isLoading: false })
       } catch (err: any) {
         set({
           error: err?.response?.data?.message || err.message,
@@ -75,8 +134,12 @@ export const createCrudStore = <T extends { id?: string | number }>(
       set({ isLoading: true, error: null })
       try {
         const { data } = await axios.post(`${endpoint}${params}`, get().payload)
+        const createdItem = data?.data ?? data
         set((state) => ({
-          items: [...state.items, data],
+          items:
+            createdItem && typeof createdItem === 'object'
+              ? [...state.items, createdItem]
+              : state.items,
           isLoading: false,
           formValues: {},
         }))
@@ -98,10 +161,14 @@ export const createCrudStore = <T extends { id?: string | number }>(
           get().payload,
         )
 
+        const updatedItem = data?.data ?? data
+
         set((state) => ({
-          items: state.items.map((item) => (item.id === id ? data : item)),
-          activeItem: data,
-          formValues: data,
+          items: state.items.map((item) =>
+            item.id === id ? updatedItem : item,
+          ),
+          activeItem: updatedItem,
+          formValues: updatedItem,
           isLoading: false,
         }))
         toast.success('Success')
@@ -192,6 +259,7 @@ export const createCrudStore = <T extends { id?: string | number }>(
         items: [],
         activeItem: null,
         formValues: {},
+        pagination: null,
         error: null,
         isLoading: false,
       }),

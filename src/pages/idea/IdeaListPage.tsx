@@ -32,7 +32,7 @@ import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
 
 import FileUploader from '@/components/FileUploader'
-import CommonDataTable from '@/components/common/CommonDataTable'
+import CommonDataTableComponent from '@/components/common/CommonDataTable'
 import DashboardPage from '@/components/common/DashboardPage'
 import DeleteConfirmationModal from '@/components/table/DeleteConfirmationModal'
 import DetailFieldList from '@/components/common/DetailFieldList'
@@ -40,7 +40,7 @@ import EntityDetailModal from '@/components/common/EntityDetailModal'
 import EntityFormModal from '@/components/common/EntityFormModal'
 import SearchFilter from '@/components/common/SearchFilter'
 
-import { useIdeaSpecificStore, useIdeaStore, useReportStore } from './store'
+import { useIdeaSpecificStore, useIdeaStore } from './store'
 import { useIdeaCategoryStore } from '../master/idea-category/store'
 import { useAcademicYearStore } from '../master/academic-year/store'
 
@@ -49,6 +49,7 @@ import TblSkeletonLoading from '@/components/TblSkeletonLoading'
 import axios from '@/lib/axios'
 import { getMimeType } from '@/utils'
 import Can from '@/components/Can'
+import { useIdeaModalContext } from '@/context/useIdeaModalContext'
 
 const ideaFormSchema = z.object({
   title: z.string().min(5, 'Title is required'),
@@ -62,6 +63,7 @@ const ideaFormSchema = z.object({
 
 type IdeaFormValues = z.infer<typeof ideaFormSchema>
 const columnHelper = createColumnHelper<any>()
+const CommonDataTable = CommonDataTableComponent as any
 
 export const IdeaListPage = () => {
   const [isSubmitLoading, setIsSubmitLoading] = useState(false)
@@ -87,9 +89,9 @@ export const IdeaListPage = () => {
     isLoading: isLoadingCategories,
   } = useIdeaCategoryStore()
 
-  const { items: academicYears, fetchAll: fetchAcademicYears } =
-    useAcademicYearStore()
+  const { fetchAll: fetchAcademicYears } = useAcademicYearStore()
   const { showFormModal, setShowFormModal } = useIdeaSpecificStore()
+  const { isNewIdeaModalOpen, closeNewIdeaModal } = useIdeaModalContext()
 
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -117,6 +119,21 @@ export const IdeaListPage = () => {
       terms: true,
     },
   })
+
+  useEffect(() => {
+    if (!isNewIdeaModalOpen) return
+
+    setActiveIdea(null)
+    setUploadFiles([])
+    reset({
+      title: '',
+      content: '',
+      categoryId: '',
+      isAnonymous: false,
+      terms: true,
+    })
+    setShowFormModal(true)
+  }, [isNewIdeaModalOpen, reset, setShowFormModal])
 
   const handleDownloadZip = async (rowItem: any) => {
     setZipProcessingId(rowItem.id)
@@ -286,103 +303,104 @@ export const IdeaListPage = () => {
         id: 'actions',
         header: 'Actions',
         cell: ({ row }: any) => {
-          return(
-          <div className="d-flex gap-1">
-            <Can perform="idea.export.zip">
-              <Button
-                variant="light"
-                size="sm"
-                className="btn-icon rounded-circle text-primary"
-                onClick={() => handleDownloadZip(row.original)}
-                disabled={zipProcessingId === row.original.id}
-                title="Download ZIP"
-              >
-                {zipProcessingId === row.original.id ? (
-                  <Spinner size="sm" animation="border" />
-                ) : (
-                  <TbArchive size={18} />
-                )}
-              </Button>
-            </Can>
-            <Can perform="idea.view">
-              <Button
-                variant="light"
-                size="sm"
-                className="btn-icon rounded-circle"
-                onClick={() => {
-                  setActiveIdea(row.original)
-                  setShowDetailModal(true)
-                }}
-              >
-                <TbEye />
-              </Button>
-            </Can>
-
-            {JSON.parse(localStorage.getItem('token')!)?.user.id ===
-              row.original.user_info.id && (
-              <Can perform="idea.update">
+          return (
+            <div className="d-flex gap-1">
+              <Can perform="idea.export.zip">
+                <Button
+                  variant="light"
+                  size="sm"
+                  className="btn-icon rounded-circle text-primary"
+                  onClick={() => handleDownloadZip(row.original)}
+                  disabled={zipProcessingId === row.original.id}
+                  title="Download ZIP"
+                >
+                  {zipProcessingId === row.original.id ? (
+                    <Spinner size="sm" animation="border" />
+                  ) : (
+                    <TbArchive size={18} />
+                  )}
+                </Button>
+              </Can>
+              <Can perform="idea.view">
                 <Button
                   variant="light"
                   size="sm"
                   className="btn-icon rounded-circle"
-                  onClick={async () => {
-                    await fetchById(row.original.id)
-
-                    const latestItem =
-                      ideaStore.getState().activeItem || row.original
-                    setActiveIdea(latestItem)
-
-                    if (latestItem?.file_url) {
-                      setUploadFiles([
-                        {
-                          name: 'Attachment',
-                          type: getMimeType(latestItem.file_url),
-                          preview: latestItem.file_url,
-                          isExisting: true,
-                        } as any,
-                      ])
-                    } else {
-                      setUploadFiles([])
-                    }
-
-                    const selectedCategoryId = latestItem.category?.id
-                      ? String(latestItem.category.id)
-                      : String(latestItem.idea_category_id || '')
-
-                    reset({
-                      title: latestItem.title,
-                      content: latestItem.content,
-                      categoryId: selectedCategoryId,
-                      isAnonymous: !!latestItem.is_annonymous,
-                      terms: true,
-                    })
-
-                    setShowFormModal(true)
-                  }}
-                >
-                  <TbEdit />
-                </Button>
-              </Can>
-            )}
-
-            {JSON.parse(localStorage.getItem('token')!)?.user.id ===
-              row.original.user_info.id && (
-              <Can perform="idea.delete">
-                <Button
-                  variant="danger"
-                  size="sm"
-                  className="btn-icon rounded-circle"
                   onClick={() => {
                     setActiveIdea(row.original)
-                    setShowDeleteModal(true)
+                    setShowDetailModal(true)
                   }}
                 >
-                  <TbTrash />
+                  <TbEye />
                 </Button>
               </Can>
-            )}
-          </div>
-        )},
+
+              {JSON.parse(localStorage.getItem('token')!)?.user.id ===
+                row.original.user_info.id && (
+                <Can perform="idea.update">
+                  <Button
+                    variant="light"
+                    size="sm"
+                    className="btn-icon rounded-circle"
+                    onClick={async () => {
+                      await fetchById(row.original.id)
+
+                      const latestItem =
+                        ideaStore.getState().activeItem || row.original
+                      setActiveIdea(latestItem)
+
+                      if (latestItem?.file_url) {
+                        setUploadFiles([
+                          {
+                            name: 'Attachment',
+                            type: getMimeType(latestItem.file_url),
+                            preview: latestItem.file_url,
+                            isExisting: true,
+                          } as any,
+                        ])
+                      } else {
+                        setUploadFiles([])
+                      }
+
+                      const selectedCategoryId = latestItem.category?.id
+                        ? String(latestItem.category.id)
+                        : String(latestItem.idea_category_id || '')
+
+                      reset({
+                        title: latestItem.title,
+                        content: latestItem.content,
+                        categoryId: selectedCategoryId,
+                        isAnonymous: !!latestItem.is_annonymous,
+                        terms: true,
+                      })
+
+                      setShowFormModal(true)
+                    }}
+                  >
+                    <TbEdit />
+                  </Button>
+                </Can>
+              )}
+
+              {JSON.parse(localStorage.getItem('token')!)?.user.id ===
+                row.original.user_info.id && (
+                <Can perform="idea.delete">
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    className="btn-icon rounded-circle"
+                    onClick={() => {
+                      setActiveIdea(row.original)
+                      setShowDeleteModal(true)
+                    }}
+                  >
+                    <TbTrash />
+                  </Button>
+                </Can>
+              )}
+            </div>
+          )
+        },
       },
     ],
     [categories, reset, fetchById, ideaStore, zipProcessingId],
@@ -418,6 +436,7 @@ export const IdeaListPage = () => {
       }
 
       setShowFormModal(false)
+      closeNewIdeaModal()
       setActiveIdea(null)
       setUploadFiles([])
       fetchAll()
@@ -480,10 +499,10 @@ export const IdeaListPage = () => {
             data={items || []}
             columns={columns}
             itemsName="ideas"
-            renderHeader={({ globalFilter, setGlobalFilter }) => (
+            renderHeader={(ctx: any) => (
               <SearchFilter
-                value={globalFilter}
-                onChange={setGlobalFilter}
+                value={ctx.globalFilter}
+                onChange={ctx.setGlobalFilter}
                 placeholder="Search ideas..."
               />
             )}
@@ -495,7 +514,10 @@ export const IdeaListPage = () => {
       <EntityFormModal
         show={showFormModal}
         title={activeIdea ? 'Edit Idea' : 'New Idea'}
-        onHide={() => setShowFormModal(false)}
+        onHide={() => {
+          setShowFormModal(false)
+          closeNewIdeaModal()
+        }}
         onSubmit={submitForm}
         submitLabel={activeIdea ? 'Update' : 'Create'}
         isSubmitting={isSubmitLoading}

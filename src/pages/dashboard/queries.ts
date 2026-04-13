@@ -65,6 +65,20 @@ type RawContributorsCountsResponse = {
   data?: RawContributorsCountRow[]
 }
 
+type RawMostViewedPage = {
+  page_name?: string
+  total_views?: number | string
+}
+
+type RawMostActiveUser = {
+  user_id?: number | string
+  total_visits?: number | string
+  user?: {
+    id?: number | string
+    name?: string
+  }
+}
+
 const DASHBOARD_QUERY_SCOPE = 'dashboard'
 
 export const dashboardQueryKeys = {
@@ -101,6 +115,8 @@ export const dashboardQueryKeys = {
       'contributors-counts',
       academicYear ?? 'all',
     ] as const,
+  mostViewedPages: [DASHBOARD_QUERY_SCOPE, 'most-viewed-pages'] as const,
+  mostActiveUsers: [DASHBOARD_QUERY_SCOPE, 'most-active-users'] as const,
 }
 
 const toValidDate = (value: unknown): Date | null => {
@@ -241,6 +257,56 @@ const normalizeContributorsCounts = (
   }
 }
 
+const normalizeMostViewedPages = (payload: unknown): DashboardChartData => {
+  const rows = Array.isArray(payload)
+    ? (payload as RawMostViewedPage[])
+    : Array.isArray((payload as { data?: unknown[] })?.data)
+      ? ((payload as { data: RawMostViewedPage[] }).data ?? [])
+      : []
+
+  const points = rows
+    .map((row) => ({
+      label: String(row.page_name ?? 'Unknown Page'),
+      value: toNumber(row.total_views),
+    }))
+    .sort(
+      (left, right) =>
+        right.value - left.value || left.label.localeCompare(right.label),
+    )
+
+  return {
+    labels: points.map((point) => point.label),
+    values: points.map((point) => point.value),
+    filterApplied: false,
+    academicYearId: 'all',
+  }
+}
+
+const normalizeMostActiveUsers = (payload: unknown): DashboardChartData => {
+  const rows = Array.isArray(payload)
+    ? (payload as RawMostActiveUser[])
+    : Array.isArray((payload as { data?: unknown[] })?.data)
+      ? ((payload as { data: RawMostActiveUser[] }).data ?? [])
+      : []
+
+  const points = rows
+    .map((row) => ({
+      label: String(row.user?.name ?? `User #${toNumber(row.user_id)}`),
+      value: toNumber(row.total_visits),
+    }))
+    .sort(
+      (left, right) =>
+        right.value - left.value || left.label.localeCompare(right.label),
+    )
+
+  return {
+    labels: points.map((point) => point.label),
+    values: points.map((point) => point.value),
+    filterApplied: false,
+    academicYearId: 'all',
+  }
+}
+
 const normalizeChartResponse = (
   payload: RawChartApiResponse,
   countKeys: string[],
@@ -355,6 +421,32 @@ export const useContributorsCountsQuery = (academicYear?: string) => {
         )
 
       return normalizeContributorsCounts(payload)
+    },
+  })
+}
+
+export const useMostViewedPagesQuery = () => {
+  return useQuery({
+    queryKey: dashboardQueryKeys.mostViewedPages,
+    queryFn: async () => {
+      const payload = await fetchFromFirstAvailableRoute<unknown>([
+        '/most-viewed-pages',
+      ])
+
+      return normalizeMostViewedPages(payload)
+    },
+  })
+}
+
+export const useMostActiveUsersQuery = () => {
+  return useQuery({
+    queryKey: dashboardQueryKeys.mostActiveUsers,
+    queryFn: async () => {
+      const payload = await fetchFromFirstAvailableRoute<unknown>([
+        '/most-active-users',
+      ])
+
+      return normalizeMostActiveUsers(payload)
     },
   })
 }

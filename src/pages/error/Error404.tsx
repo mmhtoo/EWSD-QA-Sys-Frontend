@@ -1,10 +1,17 @@
 import AppLogo from '@/components/AppLogo'
 import { appName, author, currentYear } from '@/helpers'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { Card, Col, Container, Row } from 'react-bootstrap'
 import { AppRoutes } from '@/configs/routes'
 
 const Index = () => {
+  const navigate = useNavigate()
+
+  const handleForceLogout = () => {
+    localStorage.removeItem('token')
+    navigate(AppRoutes.LOGIN.fullPath, { replace: true })
+  }
+
   return (
     <div className="auth-box overflow-hidden align-items-center d-flex">
       <Container>
@@ -176,7 +183,13 @@ const Index = () => {
                   >
                     Go Home
                   </Link>
-                  <button className="btn btn-outline-info">Search Site</button>
+                  <button
+                    type="button"
+                    className="btn btn-outline-danger"
+                    onClick={handleForceLogout}
+                  >
+                    Force Logout
+                  </button>
                 </div>
               </div>
             </Card>
