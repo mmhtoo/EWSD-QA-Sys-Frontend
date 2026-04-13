@@ -6,7 +6,7 @@ import { Badge, Button, Container, Row, Col } from 'react-bootstrap'
 import { TbCheck, TbEye, TbTrash, TbRotateClockwise2 } from 'react-icons/tb'
 import toast from 'react-hot-toast'
 
-import CommonDataTable from '@/components/common/CommonDataTable'
+import CommonDataTableComponent from '@/components/common/CommonDataTable'
 import DashboardPage from '@/components/common/DashboardPage'
 import DetailFieldList from '@/components/common/DetailFieldList'
 import EntityDetailModal from '@/components/common/EntityDetailModal'
@@ -26,6 +26,7 @@ import { useReportCategoryStore } from '../master/report-category/store'
 import Can from '@/components/Can'
 
 const columnHelper = createColumnHelper<any>()
+const CommonDataTable = CommonDataTableComponent as any
 
 export const ContentReportListPage = () => {
   const { items: itemsReportCategories, fetchAll: fetchAllReportCategories } =
@@ -38,8 +39,14 @@ export const ContentReportListPage = () => {
   const { setPayload: setPayloadComment, update: activitationComment } =
     useCommentActivitationStore()
 
-  const [reportableType, setReportableType] = useState<string>('Idea')
+  const [reportableType, setReportableType] = useState<string>('idea')
   const [reportCategories, setReportCategories] = useState<string>('')
+
+  const reportableTypeOptions = [
+    { label: 'Idea', value: 'idea' },
+    { label: 'User', value: 'user' },
+    { label: 'Comment', value: 'comment' },
+  ]
 
   const { items, fetchAll, update, remove, setPayload, isLoading } =
     useReportStore()
@@ -64,16 +71,22 @@ export const ContentReportListPage = () => {
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor('target_type', {
+      columnHelper.accessor('reportable_type', {
         header: 'Target',
         cell: ({ row }) => (
           <div>
             <div className="fw-semibold text-capitalize">
-              {row.original.reported_details?.title || 'No Title'}
+              {row.original.reported_details?.title ||
+                row.original.reported_details?.name ||
+                row.original.reported_details?.comment?.content ||
+                row.original.comment?.content ||
+                row.original.idea?.title ||
+                row.original.reportedAccount?.name ||
+                'No Title'}
             </div>
             <div className="text-muted fs-xxs">
-              Name: {row.original.reported_details?.user_info?.name}, Email:{' '}
-              {row.original.reported_details?.user_info?.email}
+              Name: {row.original.reporter?.name || row.original.user?.name},
+              Email: {row.original.reporter?.email || row.original.user?.email}
             </div>
           </div>
         ),
@@ -198,13 +211,13 @@ export const ContentReportListPage = () => {
             data={filterItems || []}
             columns={columns}
             itemsName="reports"
-            renderHeader={({ globalFilter, setGlobalFilter }) => (
+            renderHeader={(ctx: any) => (
               <div className="col-mb-12">
                 <Row className="g-3 align-items-center mb-12">
                   <Col lg={6}>
                     <SearchFilter
-                      value={globalFilter}
-                      onChange={setGlobalFilter}
+                      value={ctx.globalFilter}
+                      onChange={ctx.setGlobalFilter}
                       placeholder="Search reports..."
                     />
                   </Col>
@@ -228,17 +241,17 @@ export const ContentReportListPage = () => {
                       className="btn-group p-1 bg-light rounded"
                       role="group"
                     >
-                      {['Idea', 'User', 'Comment'].map((type) => (
+                      {reportableTypeOptions.map((type) => (
                         <Button
-                          key={type}
+                          key={type.value}
                           variant={
-                            reportableType === type ? 'primary' : 'light'
+                            reportableType === type.value ? 'primary' : 'light'
                           }
                           size="sm"
-                          className={`px-3 py-1 border-0 rounded ${reportableType === type ? 'shadow-sm' : ''}`}
-                          onClick={() => setReportableType(type)}
+                          className={`px-3 py-1 border-0 rounded ${reportableType === type.value ? 'shadow-sm' : ''}`}
+                          onClick={() => setReportableType(type.value)}
                         >
-                          {type}
+                          {type.label}
                         </Button>
                       ))}
                     </div>
@@ -261,12 +274,13 @@ export const ContentReportListPage = () => {
             items={[
               {
                 label: 'Target Type',
-                value: activeReport.target_type?.toUpperCase(),
+                value: activeReport.reportable_type?.toUpperCase(),
               },
               {
                 label: 'Reporter',
                 value:
-                  activeReport.user_info?.name ||
+                  activeReport.reporter?.name ||
+                  activeReport.user?.name ||
                   `User #${activeReport.user_id}`,
               },
               { label: 'Status', value: activeReport.status },
@@ -301,18 +315,28 @@ export const ContentReportListPage = () => {
         show={showApproveModal}
         onHide={() => setShowApproveModal(false)}
         onConfirm={async () => {
-          if (reportableType === 'Idea') {
+          if (!activeReport?.id) {
+            toast.error('Report not found.')
+            return
+          }
+
+          if (reportableType === 'idea') {
             setPayloadIdea({ status: 'suspended' })
             await activitationIdea(activeReport?.idea_id, '/status')
-          } else if (reportableType === 'User') {
+          } else if (reportableType === 'user') {
             setPayloadUser({ status: 'suspended' })
             await activitationUser(activeReport?.user_id, '/status')
-          } else if (reportableType === 'Comment') {
+          } else if (reportableType === 'comment') {
             setPayloadComment({ status: 'suspended' })
             await activitationComment(activeReport?.comment_id, '/status')
           } else {
             toast.error('Something wrong.')
+            return
           }
+
+          setPayload({ status: 'resolved' })
+          await update(activeReport.id)
+
           setShowApproveModal(false)
           setShowUndoModal(false)
 
@@ -331,18 +355,28 @@ export const ContentReportListPage = () => {
         show={showUndoModal}
         onHide={() => setShowUndoModal(false)}
         onConfirm={async () => {
-          if (reportableType === 'Idea') {
+          if (!activeReport?.id) {
+            toast.error('Report not found.')
+            return
+          }
+
+          if (reportableType === 'idea') {
             setPayloadIdea({ status: 'active' })
             await activitationIdea(activeReport?.idea_id, '/status')
-          } else if (reportableType === 'User') {
+          } else if (reportableType === 'user') {
             setPayloadUser({ status: 'active' })
             await activitationUser(activeReport?.user_id, '/status')
-          } else if (reportableType === 'Comment') {
+          } else if (reportableType === 'comment') {
             setPayloadComment({ status: 'active' })
             await activitationComment(activeReport?.comment_id, '/status')
           } else {
             toast.error('Something wrong.')
+            return
           }
+
+          setPayload({ status: 'pending' })
+          await update(activeReport.id)
+
           setShowApproveModal(false)
           setShowUndoModal(false)
 

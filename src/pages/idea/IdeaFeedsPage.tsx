@@ -100,14 +100,18 @@ export const IdeaFeedsPage = () => {
   }, [selectedYearId])
 
   useEffect(() => {
-    console.log('🚀 ~ IdeaFeedsPage ~ academicYears:', academicYears)
     if (academicYears.length > 0 && !selectedYearId) {
-      setSelectedYearId(
-        (academicYears.find((data: any) => data.is_active === 1)?.id ??
-          1) as number,
-      )
+      const activeYear = academicYears.find((data: any) => {
+        return (
+          data?.is_active === true ||
+          data?.is_active === 1 ||
+          data?.is_active === '1'
+        )
+      })
+
+      setSelectedYearId((activeYear?.id ?? academicYears[0]?.id) as number)
     }
-  }, [academicYears])
+  }, [academicYears, selectedYearId])
 
   const handleReaction = async (
     ideaId: number,

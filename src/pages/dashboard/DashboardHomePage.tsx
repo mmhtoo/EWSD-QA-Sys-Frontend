@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Button, Col, Container, Row } from 'react-bootstrap'
+import { Button, Col, Container, ProgressBar, Row } from 'react-bootstrap'
 
 import ComponentCard from '@/components/cards/ComponentCard'
 import DetailFieldList from '@/components/common/DetailFieldList'
@@ -10,6 +10,8 @@ import {
   getIdeaModerationSignalsOptions,
   getIdeasByCategoryOptions,
   getIdeasByDepartmentOptions,
+  getMostActiveUsersOptions,
+  getMostViewedPagesOptions,
   getReportsByCategoryOptions,
   getUsersByDepartmentOptions,
 } from './chartOptions'
@@ -23,6 +25,8 @@ import {
   useExceptionReportsQuery,
   useIdeasByCategoriesQuery,
   useIdeasByDepartmentsQuery,
+  useMostActiveUsersQuery,
+  useMostViewedPagesQuery,
   usePopularIdeasQuery,
   useReportsByCategoriesQuery,
 } from './queries'
@@ -75,6 +79,8 @@ export const DashboardHomePage = () => {
   )
 
   const popularIdeasQuery = usePopularIdeasQuery(selectedAcademicYearParam)
+  const mostViewedPagesQuery = useMostViewedPagesQuery()
+  const mostActiveUsersQuery = useMostActiveUsersQuery()
 
   const exceptionReportsQuery = useExceptionReportsQuery(
     selectedAcademicYearParam,
@@ -104,6 +110,8 @@ export const DashboardHomePage = () => {
   const ideasByCategories = ideasByCategoriesQuery.data ?? EMPTY_CHART_DATA
   const reportsByCategories = reportsByCategoriesQuery.data ?? EMPTY_CHART_DATA
   const usersByDepartments = contributorsCountsQuery.data ?? EMPTY_CHART_DATA
+  const mostViewedPages = mostViewedPagesQuery.data ?? EMPTY_CHART_DATA
+  const mostActiveUsers = mostActiveUsersQuery.data ?? EMPTY_CHART_DATA
 
   const mostPopularIdeas = popularIdeasQuery.data ?? []
 
@@ -145,9 +153,35 @@ export const DashboardHomePage = () => {
     [usersByDepartments],
   )
 
+  const mostViewedPagesOptions = useMemo(
+    () =>
+      getMostViewedPagesOptions(mostViewedPages.labels, mostViewedPages.values),
+    [mostViewedPages],
+  )
+
+  const mostActiveUsersOptions = useMemo(
+    () =>
+      getMostActiveUsersOptions(mostActiveUsers.labels, mostActiveUsers.values),
+    [mostActiveUsers],
+  )
+
   const ideaModerationSignalsOptions = useMemo(
     () => getIdeaModerationSignalsOptions(ideaModerationSignals),
     [ideaModerationSignals],
+  )
+
+  const mostViewedPagesRows = useMemo(
+    () =>
+      mostViewedPages.labels.map((label, index) => ({
+        label,
+        views: mostViewedPages.values[index] ?? 0,
+      })),
+    [mostViewedPages],
+  )
+
+  const maxMostViewedCount = useMemo(
+    () => Math.max(...mostViewedPagesRows.map((row) => row.views), 1),
+    [mostViewedPagesRows],
   )
 
   const hasAcademicYearFilter = Boolean(selectedAcademicYear)
@@ -295,6 +329,75 @@ export const DashboardHomePage = () => {
                 )}
               </div>
             </ComponentCard>
+          </Col>
+        </Row>
+
+        <Row className="g-3 mt-0">
+          <Col xl={6} md={12}>
+            <ComponentCard title="Most Viewed Pages">
+              <div
+                style={{ minHeight: 330, maxHeight: 330, overflowY: 'auto' }}
+              >
+                {mostViewedPagesRows.length ? (
+                  <div className="d-flex flex-column gap-3">
+                    {mostViewedPagesRows.map((row, index) => {
+                      const percent = Math.round(
+                        (row.views / maxMostViewedCount) * 100,
+                      )
+                      return (
+                        <div key={`${row.label}-${index}`}>
+                          <div className="d-flex justify-content-between align-items-start gap-2 mb-1">
+                            <div
+                              className="text-body text-break"
+                              title={row.label}
+                            >
+                              <span className="badge bg-light text-dark me-2">
+                                #{index + 1}
+                              </span>
+                              {row.label}
+                            </div>
+                            <small className="text-muted fw-semibold text-nowrap">
+                              {row.views.toLocaleString()} views
+                            </small>
+                          </div>
+                          <ProgressBar
+                            now={percent}
+                            variant="success"
+                            style={{ height: 8 }}
+                          />
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="h-100 d-flex align-items-center justify-content-center text-center">
+                    <p className="text-muted mb-0">
+                      {getChartEmptyMessage(
+                        mostViewedPagesQuery.isLoading,
+                        mostViewedPagesQuery.isError,
+                        mostViewedPagesQuery.error,
+                      )}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </ComponentCard>
+          </Col>
+
+          <Col xl={6} md={12}>
+            <DashboardChartCard
+              title="Most Active Users"
+              chartKey={`most-active-users-${mostActiveUsers.labels.join('|')}-${mostActiveUsers.values.join('|')}`}
+              options={mostActiveUsersOptions}
+              series={mostActiveUsersOptions.series ?? []}
+              type="bar"
+              hasData={mostActiveUsers.values.length > 0}
+              emptyMessage={getChartEmptyMessage(
+                mostActiveUsersQuery.isLoading,
+                mostActiveUsersQuery.isError,
+                mostActiveUsersQuery.error,
+              )}
+            />
           </Col>
         </Row>
 

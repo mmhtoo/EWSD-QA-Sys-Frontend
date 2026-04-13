@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import {
   Card,
   CardBody,
@@ -20,6 +19,67 @@ import { useMutation } from '@tanstack/react-query'
 import AppLogo from '@/components/AppLogo'
 import { AppRoutes } from '@/configs/routes'
 import { author, currentYear } from '@/helpers'
+
+type RoutePermissionMapping = {
+  path: string
+  permissions: string[]
+}
+
+const postLoginRoutePriority: RoutePermissionMapping[] = [
+  {
+    path: AppRoutes.DASHBOARD_HOME.fullPath,
+    permissions: ['dashboard.admin', 'dashboard.qa'],
+  },
+  {
+    path: AppRoutes.IDEA_FEEDS.fullPath,
+    permissions: ['idea.user.view'],
+  },
+  {
+    path: AppRoutes.IDEA_LIST.fullPath,
+    permissions: ['idea.view'],
+  },
+  {
+    path: AppRoutes.REPORTS_LIST.fullPath,
+    permissions: ['report.view'],
+  },
+  {
+    path: AppRoutes.USER_LIST.fullPath,
+    permissions: ['user.view'],
+  },
+  {
+    path: AppRoutes.DEPARTMENT_LIST.fullPath,
+    permissions: ['department.view'],
+  },
+  {
+    path: AppRoutes.ACADEMIC_YEAR_LIST.fullPath,
+    permissions: ['academic.view'],
+  },
+  {
+    path: AppRoutes.IDEA_CATEGORY_LIST.fullPath,
+    permissions: ['idea.categories.view'],
+  },
+  {
+    path: AppRoutes.REPORT_CATEGORY_LIST.fullPath,
+    permissions: ['report.categories.view'],
+  },
+  {
+    path: AppRoutes.ROLE_LIST.fullPath,
+    permissions: ['role.view'],
+  },
+  {
+    path: AppRoutes.PERMISSION_LIST.fullPath,
+    permissions: ['permission.view'],
+  },
+]
+
+const getPostLoginRedirectPath = (permissions: string[] = []) => {
+  const firstAccessible = postLoginRoutePriority.find(
+    ({ permissions: required }) =>
+      required.some((permission) => permissions.includes(permission)),
+  )
+
+  return firstAccessible?.path ?? '/403'
+}
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -46,7 +106,10 @@ export function LoginPage() {
     },
     onSuccess: (data) => {
       localStorage.setItem('token', JSON.stringify(data))
-      navigate(AppRoutes.STARTER_HOME.fullPath)
+      const redirectPath = getPostLoginRedirectPath(
+        data?.user?.permissions || [],
+      )
+      navigate(redirectPath, { replace: true })
     },
   })
 

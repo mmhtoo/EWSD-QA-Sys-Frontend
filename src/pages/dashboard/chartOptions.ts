@@ -144,6 +144,76 @@ export const getUsersByDepartmentOptions = (
   },
 })
 
+export const getMostViewedPagesOptions = (
+  labels: string[],
+  values: number[],
+): ApexOptions => ({
+  chart: {
+    type: 'bar',
+    height: 320,
+    toolbar: { show: false },
+  },
+  plotOptions: {
+    bar: {
+      horizontal: true,
+      borderRadius: 6,
+      borderRadiusApplication: 'end',
+    },
+  },
+  dataLabels: {
+    enabled: false,
+  },
+  colors: [getColor('success')],
+  series: [{ name: 'Views', data: values }],
+  xaxis: {
+    categories: labels,
+    axisBorder: { show: false },
+  },
+  grid: {
+    borderColor: getColor('border-color'),
+  },
+  tooltip: {
+    y: {
+      formatter: (value) => `${value} views`,
+    },
+  },
+})
+
+export const getMostActiveUsersOptions = (
+  labels: string[],
+  values: number[],
+): ApexOptions => ({
+  chart: {
+    type: 'bar',
+    height: 320,
+    toolbar: { show: false },
+  },
+  plotOptions: {
+    bar: {
+      horizontal: true,
+      borderRadius: 6,
+      borderRadiusApplication: 'end',
+    },
+  },
+  dataLabels: {
+    enabled: false,
+  },
+  colors: [getColor('warning')],
+  series: [{ name: 'Visits', data: values }],
+  xaxis: {
+    categories: labels,
+    axisBorder: { show: false },
+  },
+  grid: {
+    borderColor: getColor('border-color'),
+  },
+  tooltip: {
+    y: {
+      formatter: (value) => `${value} visits`,
+    },
+  },
+})
+
 export const getPopularIdeasOptions = (
   labels: string[],
   commentValues: number[],

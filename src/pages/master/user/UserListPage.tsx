@@ -13,7 +13,7 @@ import {
   FormSelect,
 } from 'react-bootstrap'
 import { useForm } from 'react-hook-form'
-import { TbEdit, TbEye, TbPlus } from 'react-icons/tb'
+import { TbEdit, TbEye, TbPlus, TbTrash } from 'react-icons/tb'
 import { z } from 'zod'
 
 import CommonDataTable from '@/components/common/CommonDataTable'
@@ -147,6 +147,19 @@ export const UserListPage = () => {
                 }}
               >
                 <TbEdit className="fs-lg" />
+              </Button>
+            </Can>
+            <Can perform="user.manage">
+              <Button
+                variant="danger"
+                size="sm"
+                className="btn-icon rounded-circle"
+                onClick={() => {
+                  setActiveUser(row.original)
+                  setShowDeleteModal(true)
+                }}
+              >
+                <TbTrash className="fs-lg" />
               </Button>
             </Can>
           </div>
