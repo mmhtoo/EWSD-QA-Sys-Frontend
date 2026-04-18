@@ -26,6 +26,8 @@ const UserProfile = () => {
     }
   }
 
+  console.log(lastLoggedInDate)
+
   return (
     <div className="topbar-item nav-user">
       <Dropdown align="end">

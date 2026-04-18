@@ -19,6 +19,7 @@ import { useMutation } from '@tanstack/react-query'
 import AppLogo from '@/components/AppLogo'
 import { AppRoutes } from '@/configs/routes'
 import { author, currentYear } from '@/helpers'
+import { useLocalStorage } from 'usehooks-ts'
 
 type RoutePermissionMapping = {
   path: string
@@ -90,6 +91,7 @@ type LoginFormValues = z.infer<typeof loginSchema>
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const [, setLastLoggedInDate] = useLocalStorage('lastLoggedInDate', '')
 
   const {
     register,
@@ -106,7 +108,7 @@ export function LoginPage() {
     },
     onSuccess: (data) => {
       localStorage.setItem('token', JSON.stringify(data))
-      localStorage.setItem('lastLoggedInDate', data?.last_login)
+      setLastLoggedInDate(data?.user?.last_login)
       const redirectPath = getPostLoginRedirectPath(
         data?.user?.permissions || [],
       )
