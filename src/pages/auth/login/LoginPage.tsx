@@ -106,6 +106,7 @@ export function LoginPage() {
     },
     onSuccess: (data) => {
       localStorage.setItem('token', JSON.stringify(data))
+      localStorage.setItem('lastLoggedInDate', data?.last_login)
       const redirectPath = getPostLoginRedirectPath(
         data?.user?.permissions || [],
       )

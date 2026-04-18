@@ -13,9 +13,12 @@ import { TbChevronDown } from 'react-icons/tb'
 import { useNavigate } from 'react-router'
 
 import user3 from '@/assets/images/users/user-3.jpg'
+import { useLocalStorage } from 'usehooks-ts'
+import dayjs from 'dayjs'
 
 const UserProfile = () => {
   const navigate = useNavigate()
+  const [lastLoggedInDate] = useLocalStorage('lastLoggedInDate', '')
   const handleAction = (id?: string) => {
     if (id === 'logout-btn') {
       localStorage.removeItem('token')
@@ -42,10 +45,20 @@ const UserProfile = () => {
               {JSON.parse(localStorage.getItem('token')!)?.user?.name ??
                 'Geneva'}
             </h5>
+
             <TbChevronDown className="align-middle" />
           </div>
         </DropdownToggle>
         <DropdownMenu className="dropdown-menu-end">
+          {lastLoggedInDate && (
+            <div className="dropdown-header noti-title">
+              <h6 className="text-overflow m-0">
+                Last Logged In:{' '}
+                {dayjs(lastLoggedInDate).format('DD MMM YYYY HH:mm:ss')}
+              </h6>
+            </div>
+          )}
+
           {userDropdownItems.map((item, idx) => (
             <Fragment key={idx}>
               {item.isHeader ? (
